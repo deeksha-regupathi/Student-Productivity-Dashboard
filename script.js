@@ -1,4 +1,150 @@
-// ===== Global State & Setup =====
+// =========================================================
+// StudyPulse — Phase 7: Production Polish & Responsive UX Script
+// =========================================================
+
+// ===== Toast Notification System =====
+const toastContainer = document.getElementById("toastContainer");
+
+function showToast(message, type = "info", duration = 4000) {
+  if (!toastContainer) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast toast-${type}`;
+  toast.setAttribute("role", "status");
+
+  const icon = type === "success" ? "✅" : type === "error" ? "❌" : type === "warning" ? "⚠️" : "ℹ️";
+
+  toast.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span aria-hidden="true">${icon}</span>
+      <span>${escapeHtml(message)}</span>
+    </div>
+    <button class="toast-close" type="button" aria-label="Close notification">✕</button>
+  `;
+
+  const closeBtn = toast.querySelector(".toast-close");
+  const removeToast = () => {
+    toast.classList.add("toast-hiding");
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 260);
+  };
+
+  if (closeBtn) closeBtn.addEventListener("click", removeToast);
+  setTimeout(removeToast, duration);
+
+  toastContainer.appendChild(toast);
+}
+
+// ===== Accessible Confirmation Dialog System =====
+const confirmDialog = document.getElementById("confirmDialog");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmMessage = document.getElementById("confirmMessage");
+const confirmIconWrap = document.getElementById("confirmIconWrap");
+const cancelConfirmBtn = document.getElementById("cancelConfirmBtn");
+const proceedConfirmBtn = document.getElementById("proceedConfirmBtn");
+
+let confirmResolve = null;
+
+function showConfirmDialog({
+  title = "Confirm Action",
+  message = "Are you sure you want to proceed?",
+  confirmText = "Confirm",
+  cancelText = "Cancel",
+  danger = true,
+} = {}) {
+  return new Promise((resolve) => {
+    confirmResolve = resolve;
+
+    if (confirmTitle) confirmTitle.textContent = title;
+    if (confirmMessage) confirmMessage.textContent = message;
+    if (proceedConfirmBtn) {
+      proceedConfirmBtn.textContent = confirmText;
+      proceedConfirmBtn.className = danger ? "btn btn-danger" : "btn btn-primary";
+    }
+    if (cancelConfirmBtn) cancelConfirmBtn.textContent = cancelText;
+
+    if (confirmDialog && typeof confirmDialog.showModal === "function") {
+      confirmDialog.showModal();
+    }
+  });
+}
+
+function handleConfirmClose(result) {
+  if (confirmDialog && confirmDialog.open) {
+    confirmDialog.close();
+  }
+  if (confirmResolve) {
+    confirmResolve(result);
+    confirmResolve = null;
+  }
+}
+
+if (cancelConfirmBtn) {
+  cancelConfirmBtn.addEventListener("click", () => handleConfirmClose(false));
+}
+if (proceedConfirmBtn) {
+  proceedConfirmBtn.addEventListener("click", () => handleConfirmClose(true));
+}
+if (confirmDialog) {
+  confirmDialog.addEventListener("cancel", (e) => {
+    e.preventDefault();
+    handleConfirmClose(false);
+  });
+}
+
+// ===== Theme Management (Light / Dark / System) =====
+const THEME_STORAGE_KEY = "studypulse_theme";
+const themeToggleBtn = document.getElementById("themeToggleBtn");
+const themeIcon = document.getElementById("themeIcon");
+const themeSelectDropdown = document.getElementById("themeSelectDropdown");
+
+function getSavedTheme() {
+  return localStorage.getItem(THEME_STORAGE_KEY) || "light";
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === "dark") {
+    root.setAttribute("data-theme", "dark");
+    if (themeIcon) themeIcon.textContent = "☀️";
+  } else if (theme === "light") {
+    root.setAttribute("data-theme", "light");
+    if (themeIcon) themeIcon.textContent = "🌙";
+  } else {
+    // System preference
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    root.setAttribute("data-theme", prefersDark ? "dark" : "light");
+    if (themeIcon) themeIcon.textContent = prefersDark ? "☀️" : "🌙";
+  }
+
+  localStorage.setItem(THEME_STORAGE_KEY, theme);
+  if (themeSelectDropdown) themeSelectDropdown.value = theme;
+}
+
+function toggleTheme() {
+  const current = getSavedTheme();
+  const next = current === "dark" ? "light" : "dark";
+  applyTheme(next);
+  showToast(`Switched to ${next === "dark" ? "Dark" : "Light"} theme`, "info", 2000);
+}
+
+if (themeToggleBtn) themeToggleBtn.addEventListener("click", toggleTheme);
+if (themeSelectDropdown) {
+  themeSelectDropdown.addEventListener("change", (e) => applyTheme(e.target.value));
+}
+
+// Listen to OS preference changes
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+  if (getSavedTheme() === "system") {
+    applyTheme("system");
+  }
+});
+
+// Initialize theme on boot
+applyTheme(getSavedTheme());
+
+// ===== Global Date Setup =====
 const dateEl = document.getElementById("currentDate");
 const today = new Date();
 
@@ -11,23 +157,40 @@ if (dateEl) {
   });
 }
 
+// Dynamic Welcome Greeting based on time of day
+const welcomeKicker = document.getElementById("welcomeKicker");
+if (welcomeKicker) {
+  const hour = today.getHours();
+  if (hour < 12) welcomeKicker.textContent = "Good morning";
+  else if (hour < 18) welcomeKicker.textContent = "Good afternoon";
+  else welcomeKicker.textContent = "Good evening";
+}
+
+// ===== Mobile Navigation Drawer =====
 const sidebar = document.getElementById("sidebar");
 const menuBtn = document.getElementById("menuBtn");
+const sidebarCloseBtn = document.getElementById("sidebarCloseBtn");
 const overlay = document.getElementById("overlay");
 
 function openSidebar() {
+  if (!sidebar) return;
   sidebar.classList.add("is-open");
-  overlay.hidden = false;
+  if (menuBtn) menuBtn.setAttribute("aria-expanded", "true");
+  if (overlay) overlay.hidden = false;
+  document.body.style.overflow = "hidden";
 }
 
 function closeSidebar() {
+  if (!sidebar) return;
   sidebar.classList.remove("is-open");
-  overlay.hidden = true;
+  if (menuBtn) menuBtn.setAttribute("aria-expanded", "false");
+  if (overlay) overlay.hidden = true;
+  document.body.style.overflow = "";
 }
 
 if (menuBtn) {
-  menuBtn.addEventListener("click", function () {
-    if (sidebar.classList.contains("is-open")) {
+  menuBtn.addEventListener("click", () => {
+    if (sidebar && sidebar.classList.contains("is-open")) {
       closeSidebar();
     } else {
       openSidebar();
@@ -35,12 +198,18 @@ if (menuBtn) {
   });
 }
 
-if (overlay) {
-  overlay.addEventListener("click", closeSidebar);
-}
+if (sidebarCloseBtn) sidebarCloseBtn.addEventListener("click", closeSidebar);
+if (overlay) overlay.addEventListener("click", closeSidebar);
+
+// Close drawer on ESC
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && sidebar && sidebar.classList.contains("is-open")) {
+    closeSidebar();
+  }
+});
 
 // =========================================================
-// PHASE 6: AUTHENTICATION STATE & MANAGEMENT
+// PHASE 6: AUTHENTICATION STATE & CENTRAL API CLIENT
 // =========================================================
 
 const AUTH_TOKEN_KEY = "studypulse_token";
@@ -79,6 +248,54 @@ function clearAuthSession() {
   localStorage.removeItem(AUTH_USER_KEY);
 }
 
+// Robust Central API Fetch Wrapper
+async function apiFetch(url, options = {}) {
+  const headers = {
+    ...getAuthHeaders(),
+    ...(options.headers || {}),
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    // Handle 401 Unauthorized globally (session expired / revoked)
+    if (res.status === 401 && !url.includes("/api/auth/login") && !url.includes("/api/auth/register")) {
+      clearAuthSession();
+      showAuthModal("signin");
+      showToast("Your session has expired. Please sign in again.", "warning");
+      return { ok: false, status: 401, error: "Session expired. Please sign in again." };
+    }
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      data = {};
+    }
+
+    if (!res.ok) {
+      const errorMsg = data.error || (res.status >= 500 ? "Server error. Please try again later." : "Request failed.");
+      return { ok: false, status: res.status, error: errorMsg, data };
+    }
+
+    return { ok: true, status: res.status, data };
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === "AbortError") {
+      return { ok: false, status: 0, error: "Request timed out. Please check your internet connection." };
+    }
+    return { ok: false, status: 0, error: "Network error: Unable to reach the server." };
+  }
+}
+
 // User Header UI Elements
 const userAvatarEl = document.getElementById("userAvatar");
 const userNameEl = document.getElementById("userName");
@@ -105,24 +322,40 @@ const signInForm = document.getElementById("signInForm");
 const signUpForm = document.getElementById("signUpForm");
 const loginAlert = document.getElementById("loginAlert");
 const regAlert = document.getElementById("regAlert");
+const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+const regSubmitBtn = document.getElementById("regSubmitBtn");
 
 function showAuthModal(mode = "signin") {
   if (!authDialog) return;
   if (mode === "signin") {
-    tabSignInBtn.classList.add("is-active");
-    tabSignUpBtn.classList.remove("is-active");
-    signInForm.hidden = false;
-    signUpForm.hidden = true;
+    if (tabSignInBtn) {
+      tabSignInBtn.classList.add("is-active");
+      tabSignInBtn.setAttribute("aria-selected", "true");
+    }
+    if (tabSignUpBtn) {
+      tabSignUpBtn.classList.remove("is-active");
+      tabSignUpBtn.setAttribute("aria-selected", "false");
+    }
+    if (signInForm) signInForm.hidden = false;
+    if (signUpForm) signUpForm.hidden = true;
   } else {
-    tabSignUpBtn.classList.add("is-active");
-    tabSignInBtn.classList.remove("is-active");
-    signUpForm.hidden = false;
-    signInForm.hidden = true;
+    if (tabSignUpBtn) {
+      tabSignUpBtn.classList.add("is-active");
+      tabSignUpBtn.setAttribute("aria-selected", "true");
+    }
+    if (tabSignInBtn) {
+      tabSignInBtn.classList.remove("is-active");
+      tabSignInBtn.setAttribute("aria-selected", "false");
+    }
+    if (signUpForm) signUpForm.hidden = false;
+    if (signInForm) signInForm.hidden = true;
   }
+
   if (loginAlert) loginAlert.hidden = true;
   if (regAlert) regAlert.hidden = true;
+  clearAuthErrors();
 
-  if (!authDialog.open) {
+  if (!authDialog.open && typeof authDialog.showModal === "function") {
     authDialog.showModal();
   }
 }
@@ -133,41 +366,70 @@ function closeAuthModal() {
   }
 }
 
+function clearAuthErrors() {
+  document.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
+}
+
 if (tabSignInBtn) tabSignInBtn.addEventListener("click", () => showAuthModal("signin"));
 if (tabSignUpBtn) tabSignUpBtn.addEventListener("click", () => showAuthModal("signup"));
+
+// Validation helpers
+function isValidEmailFormat(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 // Handle Sign In Submit
 if (signInForm) {
   signInForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("loginEmail").value.trim();
-    const password = document.getElementById("loginPassword").value;
+    clearAuthErrors();
 
-    if (!email || !password) return;
+    const emailInput = document.getElementById("loginEmail");
+    const passInput = document.getElementById("loginPassword");
+    const email = emailInput ? emailInput.value.trim() : "";
+    const password = passInput ? passInput.value : "";
 
+    let hasError = false;
+    if (!email) {
+      const err = document.getElementById("loginEmailError");
+      if (err) err.textContent = "Email address is required.";
+      hasError = true;
+    } else if (!isValidEmailFormat(email)) {
+      const err = document.getElementById("loginEmailError");
+      if (err) err.textContent = "Please enter a valid email address.";
+      hasError = true;
+    }
+
+    if (!password) {
+      const err = document.getElementById("loginPasswordError");
+      if (err) err.textContent = "Password is required.";
+      hasError = true;
+    }
+
+    if (hasError) return;
     if (loginAlert) loginAlert.hidden = true;
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+    setButtonLoading(loginSubmitBtn, true, "Signing In...");
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Invalid email or password.");
-      }
+    const res = await apiFetch("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
 
-      setAuthSession(data.user, data.token);
-      closeAuthModal();
-      await initializeDashboardData();
-    } catch (err) {
+    setButtonLoading(loginSubmitBtn, false);
+
+    if (!res.ok) {
       if (loginAlert) {
-        loginAlert.textContent = err.message || "Failed to sign in.";
+        loginAlert.textContent = res.error || "Invalid email or password.";
         loginAlert.hidden = false;
       }
+      return;
     }
+
+    setAuthSession(res.data.user, res.data.token);
+    closeAuthModal();
+    showToast(`Welcome back, ${res.data.user.name.split(" ")[0]}!`, "success");
+    await initializeDashboardData();
   });
 }
 
@@ -175,49 +437,80 @@ if (signInForm) {
 if (signUpForm) {
   signUpForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const name = document.getElementById("regName").value.trim();
-    const email = document.getElementById("regEmail").value.trim();
-    const password = document.getElementById("regPassword").value;
+    clearAuthErrors();
 
-    if (!name || !email || !password) return;
+    const nameInput = document.getElementById("regName");
+    const emailInput = document.getElementById("regEmail");
+    const passInput = document.getElementById("regPassword");
 
+    const name = nameInput ? nameInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim() : "";
+    const password = passInput ? passInput.value : "";
+
+    let hasError = false;
+    if (!name || name.length < 2) {
+      const err = document.getElementById("regNameError");
+      if (err) err.textContent = "Please enter your full name (at least 2 characters).";
+      hasError = true;
+    }
+
+    if (!email || !isValidEmailFormat(email)) {
+      const err = document.getElementById("regEmailError");
+      if (err) err.textContent = "Please enter a valid email address.";
+      hasError = true;
+    }
+
+    if (!password || password.length < 6) {
+      const err = document.getElementById("regPasswordError");
+      if (err) err.textContent = "Password must be at least 6 characters long.";
+      hasError = true;
+    }
+
+    if (hasError) return;
     if (regAlert) regAlert.hidden = true;
 
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
+    setButtonLoading(regSubmitBtn, true, "Creating Account...");
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to create account.");
-      }
+    const res = await apiFetch("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ name, email, password }),
+    });
 
-      setAuthSession(data.user, data.token);
-      closeAuthModal();
-      await initializeDashboardData();
-    } catch (err) {
+    setButtonLoading(regSubmitBtn, false);
+
+    if (!res.ok) {
       if (regAlert) {
-        regAlert.textContent = err.message || "Registration failed.";
+        regAlert.textContent = res.error || "Registration failed.";
         regAlert.hidden = false;
       }
+      return;
     }
+
+    setAuthSession(res.data.user, res.data.token);
+    closeAuthModal();
+    showToast("Account created successfully! Welcome to StudyPulse.", "success");
+    await initializeDashboardData();
   });
 }
 
-// Handle Logout
+// Handle Logout with Confirmation
 if (logoutBtn) {
   logoutBtn.addEventListener("click", async () => {
+    const confirmed = await showConfirmDialog({
+      title: "Sign Out",
+      message: "Are you sure you want to sign out of StudyPulse?",
+      confirmText: "Sign Out",
+      danger: true,
+    });
+
+    if (!confirmed) return;
+
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } catch (e) {}
 
     clearAuthSession();
+    showToast("Signed out successfully.", "info");
     showAuthModal("signin");
   });
 }
@@ -229,25 +522,31 @@ async function verifyAuthOrPrompt() {
     return false;
   }
 
-  try {
-    const res = await fetch("/api/auth/me", {
-      headers: getAuthHeaders(),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.user) {
-        updateUserHeaderUI(data.user);
-        return true;
-      }
-    }
-  } catch (err) {}
+  const res = await apiFetch("/api/auth/me");
+  if (res.ok && res.data && res.data.user) {
+    updateUserHeaderUI(res.data.user);
+    return true;
+  }
 
   clearAuthSession();
   showAuthModal("signin");
   return false;
 }
 
-// ===== View Navigation Routing =====
+function setButtonLoading(btn, isLoading, loadingText = "Loading...") {
+  if (!btn) return;
+  const btnText = btn.querySelector(".btn-text");
+  const btnSpinner = btn.querySelector(".btn-spinner");
+
+  btn.disabled = isLoading;
+  if (btnText) btnText.hidden = isLoading;
+  if (btnSpinner) {
+    btnSpinner.hidden = !isLoading;
+    if (isLoading && loadingText) btnSpinner.textContent = `⏳ ${loadingText}`;
+  }
+}
+
+// ===== View Navigation & Routing =====
 const viewPanes = {
   dashboard: document.getElementById("viewDashboard"),
   recall: document.getElementById("viewRecall"),
@@ -265,8 +564,10 @@ function switchView(viewName) {
     const linkView = link.getAttribute("data-view");
     if (linkView === normalizedView || (normalizedView === "analytics" && linkView === "progress")) {
       link.classList.add("is-active");
+      link.setAttribute("aria-current", "page");
     } else {
       link.classList.remove("is-active");
+      link.removeAttribute("aria-current");
     }
   });
 
@@ -277,6 +578,11 @@ function switchView(viewName) {
   const targetPane = viewPanes[normalizedView] || viewPanes.dashboard;
   if (targetPane) {
     targetPane.hidden = false;
+  }
+
+  // Update hash for deep linking without duplicate jump
+  if (window.location.hash !== `#${normalizedView}`) {
+    history.replaceState(null, "", `#${normalizedView}`);
   }
 
   closeSidebar();
@@ -298,6 +604,14 @@ function switchView(viewName) {
   }
 }
 
+// Handle hash changes (back/forward buttons)
+window.addEventListener("hashchange", () => {
+  const view = window.location.hash.replace("#", "");
+  if (view && viewPanes[view]) {
+    switchView(view);
+  }
+});
+
 document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
   link.addEventListener("click", (e) => {
     e.preventDefault();
@@ -308,7 +622,10 @@ document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
   });
 });
 
-// ===== Task Management (Phase 6: Multi-User Server Persistence) =====
+// =========================================================
+// PHASE 6 & 7: TASK MANAGEMENT (MULTI-USER & VALIDATION)
+// =========================================================
+
 let globalTasks = [];
 
 const taskListEl = document.getElementById("taskList");
@@ -320,7 +637,10 @@ const taskDialog = document.getElementById("taskDialog");
 const taskForm = document.getElementById("taskForm");
 const dialogTitle = document.getElementById("dialogTitle");
 const cancelTaskBtn = document.getElementById("cancelTaskBtn");
+const closeTaskDialogBtn = document.getElementById("closeTaskDialogBtn");
+const saveTaskBtn = document.getElementById("saveTaskBtn");
 const searchInput = document.getElementById("searchInput");
+const searchClearBtn = document.getElementById("searchClearBtn");
 const welcomeText = document.getElementById("welcomeText");
 const sidebarTip = document.getElementById("sidebarTip");
 
@@ -332,30 +652,22 @@ function toDateInputValue(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return year + "-" + month + "-" + day;
+  return `${year}-${month}-${day}`;
 }
 
 async function fetchUserTasks() {
-  try {
-    const res = await fetch("/api/tasks", {
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (json.success && Array.isArray(json.data)) {
-      globalTasks = json.data;
-      return globalTasks;
-    }
-    return [];
-  } catch (err) {
-    console.error("Could not fetch tasks:", err);
-    return [];
+  const res = await apiFetch("/api/tasks");
+  if (res.ok && Array.isArray(res.data.data)) {
+    globalTasks = res.data.data;
+    return globalTasks;
   }
+  return [];
 }
 
 function escapeHtml(text) {
-  if (!text) return "";
+  if (text === null || text === undefined) return "";
   const div = document.createElement("div");
-  div.textContent = text;
+  div.textContent = String(text);
   return div.innerHTML;
 }
 
@@ -380,7 +692,7 @@ function getDueLabel(dateStr) {
   if (diffDays < 0) return "Overdue";
   if (diffDays === 0) return "Due today";
   if (diffDays === 1) return "Due tomorrow";
-  return "In " + diffDays + " days";
+  return `In ${diffDays} days`;
 }
 
 function capitalize(word) {
@@ -393,9 +705,9 @@ function getFilteredTasks(tasks) {
   const query = searchInput.value.trim().toLowerCase();
   if (!query) return tasks;
 
-  return tasks.filter(function (task) {
-    const haystack = (task.title + " " + (task.description || "")).toLowerCase();
-    return haystack.indexOf(query) !== -1;
+  return tasks.filter((task) => {
+    const haystack = `${task.title} ${task.description || ""}`.toLowerCase();
+    return haystack.includes(query);
   });
 }
 
@@ -411,11 +723,13 @@ function updateKpis(tasks) {
 
   if (welcomeText) {
     if (pending === 0 && total > 0) {
-      welcomeText.textContent = "All tasks are complete. Great active recall focus today.";
+      welcomeText.textContent = "All tasks completed! Fantastic active recall focus today.";
     } else if (pending === 1) {
-      welcomeText.textContent = "You have 1 task left. Finish it at a steady pace.";
+      welcomeText.textContent = "You have 1 pending task. Finish strong!";
+    } else if (total === 0) {
+      welcomeText.textContent = "Add a study task to start organizing your schedule.";
     } else {
-      welcomeText.textContent = "You have " + pending + " pending tasks. Keep a steady pace.";
+      welcomeText.textContent = `You have ${pending} pending task${pending === 1 ? '' : 's'}. Keep a steady pace.`;
     }
   }
 
@@ -432,62 +746,70 @@ function updateKpis(tasks) {
 function renderTaskList(tasks) {
   if (!taskListEl || !taskCountEl) return;
   const visibleTasks = getFilteredTasks(tasks);
-  taskCountEl.textContent = visibleTasks.length + " tasks";
+  taskCountEl.textContent = `${visibleTasks.length} task${visibleTasks.length === 1 ? '' : 's'}`;
 
   if (visibleTasks.length === 0) {
-    taskListEl.innerHTML = '<li class="empty-note">No tasks found. Click Add Task to create one.</li>';
+    const isSearching = searchInput && searchInput.value.trim();
+    if (isSearching) {
+      taskListEl.innerHTML = `
+        <li class="empty-state">
+          <span class="empty-state-icon" aria-hidden="true">🔍</span>
+          <h3 class="empty-state-title">No tasks matching "${escapeHtml(searchInput.value.trim())}"</h3>
+          <p class="empty-state-text">Try searching for a different topic or clear your filter.</p>
+          <button class="btn btn-small empty-state-btn" onclick="clearSearchFilter()">Clear Search</button>
+        </li>
+      `;
+    } else {
+      taskListEl.innerHTML = `
+        <li class="empty-state">
+          <span class="empty-state-icon" aria-hidden="true">📝</span>
+          <h3 class="empty-state-title">No tasks scheduled yet</h3>
+          <p class="empty-state-text">Create your first study task to organize your daily priorities.</p>
+          <button class="btn btn-primary btn-small empty-state-btn" onclick="openAddModal()">+ Add Task</button>
+        </li>
+      `;
+    }
     return;
   }
 
   taskListEl.innerHTML = visibleTasks
-    .map(function (task) {
+    .map((task) => {
       const completedClass = task.completed ? " is-completed" : "";
       const statusClass = task.completed ? " is-done" : "";
       const statusText = task.completed ? "Completed" : "Pending";
 
-      return (
-        '<li class="task-item priority-' +
-        task.priority +
-        completedClass +
-        '" data-id="' +
-        task.id +
-        '">' +
-        '<input class="task-check" type="checkbox" ' +
-        (task.completed ? "checked" : "") +
-        ' data-action="complete" aria-label="Complete ' +
-        escapeHtml(task.title) +
-        '" />' +
-        "<div>" +
-        '<div class="task-top">' +
-        '<p class="task-title">' +
-        escapeHtml(task.title) +
-        "</p>" +
-        '<span class="priority-tag priority-' +
-        task.priority +
-        '">' +
-        capitalize(task.priority) +
-        "</span>" +
-        "</div>" +
-        '<p class="task-description">' +
-        escapeHtml(task.description || "") +
-        "</p>" +
-        '<div class="task-meta">' +
-        "<span>Due " +
-        formatDueDate(task.dueDate) +
-        "</span>" +
-        '<span class="status-tag' +
-        statusClass +
-        '">' +
-        statusText +
-        "</span>" +
-        "</div>" +
-        '<div class="task-actions">' +
-        '<button class="btn btn-small" type="button" data-action="edit">Edit</button>' +
-        '<button class="btn btn-small btn-danger" type="button" data-action="delete">Delete</button>' +
-        "</div>" +
-        "</div>" +
-        "</li>"
-      );
+      return `
+        <li class="task-item priority-${task.priority}${completedClass}" data-id="${task.id}">
+          <input
+            class="task-check"
+            type="checkbox"
+            ${task.completed ? "checked" : ""}
+            data-action="complete"
+            aria-label="Mark task '${escapeHtml(task.title)}' as ${task.completed ? 'pending' : 'completed'}"
+          />
+          <div>
+            <div class="task-top">
+              <p class="task-title">${escapeHtml(task.title)}</p>
+              <span class="priority-tag priority-${task.priority}">
+                ${capitalize(task.priority)}
+              </span>
+            </div>
+            ${task.description ? `<p class="task-description">${escapeHtml(task.description)}</p>` : ""}
+            <div class="task-meta">
+              <span>📅 Due ${formatDueDate(task.dueDate)}</span>
+              <span class="status-tag${statusClass}">${statusText}</span>
+            </div>
+            <div class="task-actions">
+              <button class="btn btn-small" type="button" data-action="edit" aria-label="Edit task '${escapeHtml(task.title)}'">
+                ✏️ Edit
+              </button>
+              <button class="btn btn-small btn-danger" type="button" data-action="delete" aria-label="Delete task '${escapeHtml(task.title)}'">
+                🗑️ Delete
+              </button>
+            </div>
+          </div>
+        </li>
+      `;
     })
     .join("");
 }
@@ -495,54 +817,38 @@ function renderTaskList(tasks) {
 function renderDeadlines(tasks) {
   if (!deadlineListEl || !deadlineCountEl) return;
   const upcoming = tasks
-    .filter(function (task) {
-      return !task.completed && task.dueDate;
-    })
-    .sort(function (a, b) {
-      return (a.dueDate || "").localeCompare(b.dueDate || "");
-    })
+    .filter((task) => !task.completed && task.dueDate)
+    .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""))
     .slice(0, 5);
 
-  deadlineCountEl.textContent = upcoming.length + " upcoming";
+  deadlineCountEl.textContent = `${upcoming.length} upcoming`;
 
   if (upcoming.length === 0) {
-    deadlineListEl.innerHTML = '<li class="empty-note">No upcoming deadlines.</li>';
+    deadlineListEl.innerHTML = '<li class="empty-note">No upcoming deadlines on your schedule.</li>';
     return;
   }
 
   deadlineListEl.innerHTML = upcoming
-    .map(function (task) {
+    .map((task) => {
       const date = new Date(task.dueDate + "T00:00:00");
       const day = String(date.getDate()).padStart(2, "0");
       const month = date.toLocaleDateString("en-IN", { month: "short" });
 
-      return (
-        '<li class="deadline-item">' +
-        '<div class="deadline-date">' +
-        '<span class="deadline-day">' +
-        day +
-        "</span>" +
-        '<span class="deadline-month">' +
-        month +
-        "</span>" +
-        "</div>" +
-        "<div>" +
-        '<p class="deadline-title">' +
-        escapeHtml(task.title) +
-        "</p>" +
-        '<p class="deadline-meta">' +
-        getDueLabel(task.dueDate) +
-        " · " +
-        capitalize(task.priority) +
-        " priority</p>" +
-        "</div>" +
-        '<span class="priority-tag priority-' +
-        task.priority +
-        '">' +
-        capitalize(task.priority) +
-        "</span>" +
-        "</li>"
-      );
+      return `
+        <li class="deadline-item">
+          <div class="deadline-date">
+            <span class="deadline-day">${day}</span>
+            <span class="deadline-month">${month}</span>
+          </div>
+          <div>
+            <p class="deadline-title">${escapeHtml(task.title)}</p>
+            <p class="deadline-meta">${getDueLabel(task.dueDate)} · ${capitalize(task.priority)} priority</p>
+          </div>
+          <span class="priority-tag priority-${task.priority}">
+            ${capitalize(task.priority)}
+          </span>
+        </li>
+      `;
     })
     .join("");
 }
@@ -555,25 +861,53 @@ async function renderAllTasks() {
 }
 
 function openAddModal() {
-  taskForm.reset();
-  document.getElementById("taskId").value = "";
-  dialogTitle.textContent = "Add Task";
-  document.getElementById("taskDueDate").value = toDateInputValue(new Date());
-  taskDialog.showModal();
+  if (taskForm) taskForm.reset();
+  const idInput = document.getElementById("taskId");
+  if (idInput) idInput.value = "";
+  if (dialogTitle) dialogTitle.textContent = "Add Task";
+  const dateInput = document.getElementById("taskDueDate");
+  if (dateInput) dateInput.value = toDateInputValue(new Date());
+
+  clearTaskFormErrors();
+  if (taskDialog && typeof taskDialog.showModal === "function") {
+    taskDialog.showModal();
+    const titleInput = document.getElementById("taskTitle");
+    if (titleInput) titleInput.focus();
+  }
 }
 
 function openEditModal(task) {
-  dialogTitle.textContent = "Edit Task";
-  document.getElementById("taskId").value = task.id;
-  document.getElementById("taskTitle").value = task.title;
-  document.getElementById("taskDescription").value = task.description || "";
-  document.getElementById("taskPriority").value = task.priority || "medium";
-  document.getElementById("taskDueDate").value = task.dueDate || toDateInputValue(new Date());
-  taskDialog.showModal();
+  if (dialogTitle) dialogTitle.textContent = "Edit Task";
+  const idInput = document.getElementById("taskId");
+  const titleInput = document.getElementById("taskTitle");
+  const descInput = document.getElementById("taskDescription");
+  const prioInput = document.getElementById("taskPriority");
+  const dateInput = document.getElementById("taskDueDate");
+
+  if (idInput) idInput.value = task.id;
+  if (titleInput) titleInput.value = task.title;
+  if (descInput) descInput.value = task.description || "";
+  if (prioInput) prioInput.value = task.priority || "medium";
+  if (dateInput) dateInput.value = task.dueDate || toDateInputValue(new Date());
+
+  clearTaskFormErrors();
+  if (taskDialog && typeof taskDialog.showModal === "function") {
+    taskDialog.showModal();
+    if (titleInput) titleInput.focus();
+  }
 }
 
 function closeTaskModal() {
-  taskDialog.close();
+  if (taskDialog && taskDialog.open) {
+    taskDialog.close();
+  }
+}
+
+function clearTaskFormErrors() {
+  const titleErr = document.getElementById("taskTitleError");
+  const dateErr = document.getElementById("taskDueDateError");
+  if (titleErr) titleErr.textContent = "";
+  if (dateErr) dateErr.textContent = "";
 }
 
 function getFormValues() {
@@ -588,28 +922,54 @@ function getFormValues() {
 
 async function addOrUpdateTask(event) {
   event.preventDefault();
+  clearTaskFormErrors();
+
   const values = getFormValues();
-  if (!values.title) return alert("Please enter a task title.");
+  let hasError = false;
+
+  if (!values.title) {
+    const err = document.getElementById("taskTitleError");
+    if (err) err.textContent = "Please enter a task title.";
+    hasError = true;
+  }
+
+  if (!values.dueDate) {
+    const err = document.getElementById("taskDueDateError");
+    if (err) err.textContent = "Please select a due date.";
+    hasError = true;
+  }
+
+  if (hasError) return;
+
+  setButtonLoading(saveTaskBtn, true, "Saving...");
 
   try {
+    let res;
     if (values.id) {
-      await fetch(`/api/tasks/${values.id}`, {
+      res = await apiFetch(`/api/tasks/${values.id}`, {
         method: "PUT",
-        headers: getAuthHeaders(),
         body: JSON.stringify(values),
       });
     } else {
-      await fetch("/api/tasks", {
+      res = await apiFetch("/api/tasks", {
         method: "POST",
-        headers: getAuthHeaders(),
         body: JSON.stringify(values),
       });
     }
 
+    setButtonLoading(saveTaskBtn, false);
+
+    if (!res.ok) {
+      showToast(res.error || "Failed to save task.", "error");
+      return;
+    }
+
     closeTaskModal();
+    showToast(values.id ? "Task updated successfully." : "Task added successfully.", "success");
     await renderAllTasks();
   } catch (err) {
-    console.error("Failed to save task:", err);
+    setButtonLoading(saveTaskBtn, false);
+    showToast("Network error saving task.", "error");
   }
 }
 
@@ -617,42 +977,75 @@ async function toggleComplete(taskId) {
   const task = globalTasks.find((t) => t.id === taskId);
   if (!task) return;
 
-  try {
-    await fetch(`/api/tasks/${taskId}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ completed: !task.completed }),
-    });
+  const newStatus = !task.completed;
+  const res = await apiFetch(`/api/tasks/${taskId}`, {
+    method: "PUT",
+    body: JSON.stringify({ completed: newStatus }),
+  });
+
+  if (res.ok) {
+    showToast(newStatus ? "Task completed! 🎉" : "Task marked as pending.", "info", 2000);
     await renderAllTasks();
-  } catch (err) {
-    console.error("Failed to toggle task completion:", err);
+  } else {
+    showToast("Could not update task status.", "error");
   }
 }
 
 async function deleteTask(taskId) {
-  const confirmed = confirm("Delete this task? This cannot be undone.");
+  const task = globalTasks.find((t) => t.id === taskId);
+  const taskTitle = task ? task.title : "this task";
+
+  const confirmed = await showConfirmDialog({
+    title: "Delete Task?",
+    message: `Are you sure you want to permanently delete "${taskTitle}"?`,
+    confirmText: "Delete Task",
+    danger: true,
+  });
+
   if (!confirmed) return;
 
-  try {
-    await fetch(`/api/tasks/${taskId}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
+  const res = await apiFetch(`/api/tasks/${taskId}`, {
+    method: "DELETE",
+  });
+
+  if (res.ok) {
+    showToast("Task deleted successfully.", "info");
     await renderAllTasks();
-  } catch (err) {
-    console.error("Failed to delete task:", err);
+  } else {
+    showToast(res.error || "Failed to delete task.", "error");
   }
 }
 
 if (addTaskBtn) addTaskBtn.addEventListener("click", openAddModal);
 if (cancelTaskBtn) cancelTaskBtn.addEventListener("click", closeTaskModal);
+if (closeTaskDialogBtn) closeTaskDialogBtn.addEventListener("click", closeTaskModal);
 if (taskForm) taskForm.addEventListener("submit", addOrUpdateTask);
-if (searchInput) searchInput.addEventListener("input", () => {
-  renderTaskList(globalTasks);
-});
+
+// Search Handling with Clear button & Debounce
+function clearSearchFilter() {
+  if (searchInput) {
+    searchInput.value = "";
+    if (searchClearBtn) searchClearBtn.hidden = true;
+    renderTaskList(globalTasks);
+  }
+}
+window.clearSearchFilter = clearSearchFilter;
+
+if (searchClearBtn) searchClearBtn.addEventListener("click", clearSearchFilter);
+
+let searchDebounceTimeout = null;
+if (searchInput) {
+  searchInput.addEventListener("input", () => {
+    if (searchClearBtn) searchClearBtn.hidden = !searchInput.value;
+    clearTimeout(searchDebounceTimeout);
+    searchDebounceTimeout = setTimeout(() => {
+      renderTaskList(globalTasks);
+    }, 150);
+  });
+}
 
 if (taskListEl) {
-  taskListEl.addEventListener("click", function (event) {
+  taskListEl.addEventListener("click", (event) => {
     const actionEl = event.target.closest("[data-action]");
     if (!actionEl) return;
     const taskItem = actionEl.closest(".task-item");
@@ -671,7 +1064,7 @@ if (taskListEl) {
 }
 
 // =========================================================
-// PHASE 4 & 6: SMART REVISION QUEUE (SPACED REPETITION)
+// PHASE 4, 6 & 7: SMART REVISION QUEUE (SPACED REPETITION)
 // =========================================================
 
 let globalRevisions = [];
@@ -685,28 +1078,21 @@ const revCountUpcoming = document.getElementById("revCountUpcoming");
 
 async function loadRevisionQueue() {
   if (!revisionQueueList) return;
-  try {
-    const res = await fetch("/api/revisions?status=pending", {
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
+  const res = await apiFetch("/api/revisions?status=pending");
 
-    if (json.success && Array.isArray(json.data)) {
-      globalRevisions = json.data;
+  if (res.ok && Array.isArray(res.data.data)) {
+    globalRevisions = res.data.data;
 
-      const overdue = globalRevisions.filter((r) => r.is_overdue).length;
-      const dueToday = globalRevisions.filter((r) => r.is_due_today).length;
-      const upcoming = globalRevisions.filter((r) => r.is_upcoming).length;
+    const overdue = globalRevisions.filter((r) => r.is_overdue).length;
+    const dueToday = globalRevisions.filter((r) => r.is_due_today).length;
+    const upcoming = globalRevisions.filter((r) => r.is_upcoming).length;
 
-      if (revCountAll) revCountAll.textContent = globalRevisions.length;
-      if (revCountOverdue) revCountOverdue.textContent = overdue;
-      if (revCountDueToday) revCountDueToday.textContent = dueToday;
-      if (revCountUpcoming) revCountUpcoming.textContent = upcoming;
+    if (revCountAll) revCountAll.textContent = globalRevisions.length;
+    if (revCountOverdue) revCountOverdue.textContent = overdue;
+    if (revCountDueToday) revCountDueToday.textContent = dueToday;
+    if (revCountUpcoming) revCountUpcoming.textContent = upcoming;
 
-      renderRevisionCards();
-    }
-  } catch (err) {
-    console.error("Failed to load revision queue:", err);
+    renderRevisionCards();
   }
 }
 
@@ -723,11 +1109,24 @@ function renderRevisionCards() {
   }
 
   if (filtered.length === 0) {
-    const emptyMsg =
-      currentRevisionFilter === "all"
-        ? "All caught up! No pending spaced revisions. Complete an active recall session to schedule your next review."
-        : `No ${currentRevisionFilter.replace("_", " ")} revisions at the moment.`;
-    revisionQueueList.innerHTML = `<p class="empty-note" style="grid-column: 1/-1;">${emptyMsg}</p>`;
+    const emptyIcon = currentRevisionFilter === "all" ? "🎉" : "✨";
+    const emptyTitle = currentRevisionFilter === "all"
+      ? "Revision queue is completely clear!"
+      : `No ${currentRevisionFilter.replace("_", " ")} revisions`;
+    const emptyMsg = currentRevisionFilter === "all"
+      ? "All caught up on spaced repetition reviews. Complete an active recall session to schedule your next review."
+      : `You're all set with ${currentRevisionFilter.replace("_", " ")} topics.`;
+
+    revisionQueueList.innerHTML = `
+      <div class="empty-state" style="grid-column: 1/-1;">
+        <span class="empty-state-icon" aria-hidden="true">${emptyIcon}</span>
+        <h3 class="empty-state-title">${emptyTitle}</h3>
+        <p class="empty-state-text">${emptyMsg}</p>
+        <button class="btn btn-primary btn-small empty-state-btn" onclick="switchView('recall')">
+          🧠 Practice Active Recall
+        </button>
+      </div>
+    `;
     return;
   }
 
@@ -760,13 +1159,13 @@ function renderRevisionCards() {
           </div>
           <div class="revision-meta-row">
             <span>Last Score: <strong>${rev.score}%</strong> (${scoreLevel})</span>
-            <span>Scheduled: ${rev.revision_date}</span>
+            <span>📅 Scheduled: ${rev.revision_date}</span>
           </div>
           <div class="revision-card-actions">
             <button class="btn btn-primary btn-small" onclick="jumpToRecallTopic('${rev.topic_id}')">
               🧠 Revise Now
             </button>
-            <button class="btn btn-small" onclick="markRevisionCompleted('${rev.id}')">
+            <button class="btn btn-small" onclick="markRevisionCompleted('${rev.id}', this)">
               ✓ Complete
             </button>
           </div>
@@ -785,33 +1184,42 @@ function getRecallLevelLocal(score) {
 
 document.querySelectorAll(".revision-filter-tabs .filter-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
-    document.querySelectorAll(".revision-filter-tabs .filter-tab").forEach((t) => t.classList.remove("is-active"));
+    document.querySelectorAll(".revision-filter-tabs .filter-tab").forEach((t) => {
+      t.classList.remove("is-active");
+      t.setAttribute("aria-selected", "false");
+    });
     tab.classList.add("is-active");
+    tab.setAttribute("aria-selected", "true");
     currentRevisionFilter = tab.getAttribute("data-filter") || "all";
     renderRevisionCards();
   });
 });
 
-window.markRevisionCompleted = async function (revisionId) {
-  try {
-    const res = await fetch(`/api/revisions/${revisionId}/complete`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (json.success) {
-      await loadRevisionQueue();
-      await loadLearningAnalyticsDashboard();
-    } else {
-      alert("Could not complete revision: " + (json.error || "Unknown error"));
+window.markRevisionCompleted = async function (revisionId, btnEl) {
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "⏳ Completing...";
+  }
+
+  const res = await apiFetch(`/api/revisions/${revisionId}/complete`, {
+    method: "POST",
+  });
+
+  if (res.ok) {
+    showToast("Spaced revision completed! Great retention work.", "success");
+    await loadRevisionQueue();
+    await loadLearningAnalyticsDashboard();
+  } else {
+    showToast(res.error || "Could not complete revision.", "error");
+    if (btnEl) {
+      btnEl.disabled = false;
+      btnEl.textContent = "✓ Complete";
     }
-  } catch (err) {
-    console.error("Failed to complete revision:", err);
   }
 };
 
 // =========================================================
-// PHASE 3 & 4: ACTIVE RECALL & EVALUATION ENGINE FRONTEND
+// PHASE 3, 4 & 7: ACTIVE RECALL & EVALUATION ENGINE
 // =========================================================
 
 let globalTopics = [];
@@ -867,22 +1275,16 @@ const topicForm = document.getElementById("topicForm");
 const openNewTopicModalBtn = document.getElementById("openNewTopicModalBtn");
 const openAddTopicBtn = document.getElementById("openAddTopicBtn");
 const cancelTopicBtn = document.getElementById("cancelTopicBtn");
+const closeTopicDialogBtn = document.getElementById("closeTopicDialogBtn");
+const saveTopicBtn = document.getElementById("saveTopicBtn");
 
 async function fetchTopics() {
-  try {
-    const res = await fetch("/api/topics", {
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (json.success && Array.isArray(json.data)) {
-      globalTopics = json.data;
-      return globalTopics;
-    }
-    return [];
-  } catch (err) {
-    console.error("Failed to load topics:", err);
-    return [];
+  const res = await apiFetch("/api/topics");
+  if (res.ok && Array.isArray(res.data.data)) {
+    globalTopics = res.data.data;
+    return globalTopics;
   }
+  return [];
 }
 
 async function loadTopicsForRecall(selectTopicId = null) {
@@ -923,9 +1325,9 @@ function setSelectedTopic(topicId) {
   if (prepQuestionText) prepQuestionText.textContent = selectedTopic.question;
   if (prepNotesContent) prepNotesContent.textContent = selectedTopic.notes;
 
-  recallPrepCard.hidden = false;
-  recallActiveCard.hidden = true;
-  recallResultCard.hidden = true;
+  if (recallPrepCard) recallPrepCard.hidden = false;
+  if (recallActiveCard) recallActiveCard.hidden = true;
+  if (recallResultCard) recallResultCard.hidden = true;
 
   loadTopicHistory(selectedTopic.id);
 }
@@ -937,22 +1339,30 @@ if (topicSelect) {
 }
 
 function startRecallSession() {
-  if (!selectedTopic) return;
+  if (!selectedTopic) {
+    showToast("Please select a valid topic first.", "warning");
+    return;
+  }
 
-  recallPrepCard.hidden = true;
-  recallResultCard.hidden = true;
+  if (recallPrepCard) recallPrepCard.hidden = true;
+  if (recallResultCard) recallResultCard.hidden = true;
+  if (recallActiveCard) recallActiveCard.hidden = false;
 
-  recallActiveCard.hidden = false;
-  activeTopicTitle.textContent = selectedTopic.title;
-  activeQuestionText.textContent = selectedTopic.question;
+  if (activeTopicTitle) activeTopicTitle.textContent = selectedTopic.title;
+  if (activeQuestionText) activeQuestionText.textContent = selectedTopic.question;
 
-  studentAnswerInput.value = "";
+  if (studentAnswerInput) {
+    studentAnswerInput.value = "";
+    studentAnswerInput.focus();
+  }
+
   updateWordCount("");
   hideRecallAlert();
-
   startTimer();
-  studentAnswerInput.focus();
-  recallActiveCard.scrollIntoView({ behavior: "smooth" });
+
+  if (recallActiveCard) {
+    recallActiveCard.scrollIntoView({ behavior: "smooth" });
+  }
 }
 
 if (startRecallBtn) startRecallBtn.addEventListener("click", startRecallSession);
@@ -961,21 +1371,23 @@ if (retryRecallBtn) retryRecallBtn.addEventListener("click", startRecallSession)
 if (cancelActiveRecallBtn) {
   cancelActiveRecallBtn.addEventListener("click", () => {
     stopTimer();
-    recallActiveCard.hidden = true;
-    recallPrepCard.hidden = false;
-    recallPrepCard.scrollIntoView({ behavior: "smooth" });
+    if (recallActiveCard) recallActiveCard.hidden = true;
+    if (recallPrepCard) {
+      recallPrepCard.hidden = false;
+      recallPrepCard.scrollIntoView({ behavior: "smooth" });
+    }
   });
 }
 
 function startTimer() {
   stopTimer();
   recallStartTime = Date.now();
-  recallTimerDisplay.textContent = "00:00";
+  if (recallTimerDisplay) recallTimerDisplay.textContent = "00:00";
   recallTimerInterval = setInterval(() => {
     const elapsedSecs = Math.floor((Date.now() - recallStartTime) / 1000);
     const mins = String(Math.floor(elapsedSecs / 60)).padStart(2, "0");
     const secs = String(elapsedSecs % 60).padStart(2, "0");
-    recallTimerDisplay.textContent = `${mins}:${secs}`;
+    if (recallTimerDisplay) recallTimerDisplay.textContent = `${mins}:${secs}`;
   }, 1000);
 }
 
@@ -991,7 +1403,7 @@ function updateWordCount(text) {
   const trimmed = text.trim();
   const words = trimmed ? trimmed.split(/\s+/).length : 0;
   const chars = text.length;
-  recallWordCount.textContent = `${words} word${words === 1 ? "" : "s"} (${chars} characters)`;
+  recallWordCount.textContent = `${words} word${words === 1 ? "" : "s"} (${chars} character${chars === 1 ? '' : 's'})`;
 }
 
 if (studentAnswerInput) {
@@ -1023,93 +1435,93 @@ if (recallForm) {
       return;
     }
 
-    const answer = studentAnswerInput.value.trim();
+    const answer = studentAnswerInput ? studentAnswerInput.value.trim() : "";
 
     if (!answer) {
       showRecallAlert("Please write your recalled answer before submitting.");
-      studentAnswerInput.focus();
+      if (studentAnswerInput) studentAnswerInput.focus();
       return;
     }
 
     if (answer.length < 8) {
-      showRecallAlert("Your response is too short. Please explain the concepts in more detail.");
-      studentAnswerInput.focus();
+      showRecallAlert("Your response is too short. Please explain the concepts with more depth.");
+      if (studentAnswerInput) studentAnswerInput.focus();
       return;
     }
 
     hideRecallAlert();
-    setSubmitLoading(true);
+    setButtonLoading(submitRecallBtn, true, "Evaluating with AI...");
+    if (studentAnswerInput) studentAnswerInput.disabled = true;
 
     try {
-      const response = await fetch("/api/recall/evaluate", {
+      const res = await apiFetch("/api/recall/evaluate", {
         method: "POST",
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           topic_id: selectedTopic.id,
           student_answer: answer,
         }),
       });
 
-      const data = await response.json();
+      setButtonLoading(submitRecallBtn, false);
+      if (studentAnswerInput) studentAnswerInput.disabled = false;
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Evaluation failed. Please try again.");
+      if (!res.ok) {
+        showRecallAlert(res.error || "Evaluation failed. Please try submitting again.");
+        return;
       }
 
       stopTimer();
-      displayEvaluationResult(data);
+      displayEvaluationResult(res.data);
+      showToast(`Recall evaluation complete: ${res.data.score}% (${res.data.level})`, "success");
       loadRevisionQueue();
     } catch (err) {
-      console.error("Submission error:", err);
-      showRecallAlert(err.message || "Network error. Please try submitting again.");
-    } finally {
-      setSubmitLoading(false);
+      setButtonLoading(submitRecallBtn, false);
+      if (studentAnswerInput) studentAnswerInput.disabled = false;
+      showRecallAlert("Network error. Please try submitting again.");
     }
   });
 }
 
-function setSubmitLoading(isLoading) {
-  if (!submitRecallBtn) return;
-  const btnText = submitRecallBtn.querySelector(".btn-text");
-  const btnSpinner = submitRecallBtn.querySelector(".btn-spinner");
-
-  submitRecallBtn.disabled = isLoading;
-  if (btnText) btnText.hidden = isLoading;
-  if (btnSpinner) btnSpinner.hidden = !isLoading;
-}
-
 function displayEvaluationResult(result) {
-  recallActiveCard.hidden = true;
-  recallResultCard.hidden = false;
+  if (recallActiveCard) recallActiveCard.hidden = true;
+  if (recallResultCard) recallResultCard.hidden = false;
 
   const score = result.score;
   const level = result.level || "Needs Improvement";
 
-  resultScoreVal.textContent = score;
-  resultLevelPill.textContent = getLevelIcon(level) + " " + level;
-  resultLevelPill.className = `level-pill level-${levelToCssClass(level)}`;
+  if (resultScoreVal) resultScoreVal.textContent = score;
+  if (resultLevelPill) {
+    resultLevelPill.textContent = `${getLevelIcon(level)} ${level}`;
+    resultLevelPill.className = `level-pill level-${levelToCssClass(level)}`;
+  }
 
   if (resultScoreDonut) {
     resultScoreDonut.style.borderColor = getLevelColor(level);
   }
 
-  resultTopicTitle.textContent = `${result.topic_title || selectedTopic.title} — Result`;
-  resultDate.textContent = `Completed on ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  if (resultTopicTitle) {
+    resultTopicTitle.textContent = `${result.topic_title || (selectedTopic ? selectedTopic.title : "Topic")} — Result`;
+  }
+  if (resultDate) {
+    resultDate.textContent = `Completed on ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
 
   if (result.next_revision && resultNextRevisionText) {
     const rev = result.next_revision;
     resultNextRevisionText.textContent = `Next revision: ${rev.label} (${rev.revision_date})`;
   }
 
-  resultFeedbackText.textContent = result.feedback || "Evaluation complete.";
+  if (resultFeedbackText) {
+    resultFeedbackText.textContent = result.feedback || "Evaluation complete.";
+  }
 
   renderConceptList(correctConceptsList, result.correct_concepts, "No fully correct concepts identified.", "correct");
   renderConceptList(partialConceptsList, result.partial_concepts, "No partial concepts.", "partial");
-  renderConceptList(missedConceptsList, result.missed_concepts, "None! All concepts recalled.", "missed");
+  renderConceptList(missedConceptsList, result.missed_concepts, "None! All core concepts recalled.", "missed");
 
-  correctCount.textContent = (result.correct_concepts || []).length;
-  partialCount.textContent = (result.partial_concepts || []).length;
-  missedCount.textContent = (result.missed_concepts || []).length;
+  if (correctCount) correctCount.textContent = (result.correct_concepts || []).length;
+  if (partialCount) partialCount.textContent = (result.partial_concepts || []).length;
+  if (missedCount) missedCount.textContent = (result.missed_concepts || []).length;
 
   if (suggestionsList) {
     suggestionsList.innerHTML = "";
@@ -1125,7 +1537,7 @@ function displayEvaluationResult(result) {
     }
   }
 
-  if (revealedNotesBox && revealedNotesText) {
+  if (revealedNotesBox && revealedNotesText && selectedTopic) {
     revealedNotesBox.hidden = true;
     revealedNotesText.textContent = selectedTopic.notes;
   }
@@ -1133,8 +1545,8 @@ function displayEvaluationResult(result) {
     toggleNotesCompareBtn.textContent = "📖 View Original Notes";
   }
 
-  loadTopicHistory(selectedTopic.id);
-  recallResultCard.scrollIntoView({ behavior: "smooth" });
+  if (selectedTopic) loadTopicHistory(selectedTopic.id);
+  if (recallResultCard) recallResultCard.scrollIntoView({ behavior: "smooth" });
 }
 
 function renderConceptList(container, items, emptyText, type) {
@@ -1198,44 +1610,38 @@ if (viewRevisionScheduleBtn) {
 
 async function loadTopicHistory(topicId) {
   if (!topicHistoryTbody) return;
-  try {
-    const res = await fetch(`/api/recall/history?topic_id=${topicId}`, {
-      headers: getAuthHeaders(),
-    });
-    const json = await res.json();
-    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-      topicHistoryTbody.innerHTML = json.data
-        .map((att) => {
-          const dateStr = new Date(att.created_at).toLocaleString("en-IN", {
-            day: "numeric",
-            month: "short",
-            hour: "2-digit",
-            minute: "2-digit",
-          });
-          const correctNum = Array.isArray(att.correct_concepts) ? att.correct_concepts.length : 0;
-          const missedNum = Array.isArray(att.missed_concepts) ? att.missed_concepts.length : 0;
+  const res = await apiFetch(`/api/recall/history?topic_id=${topicId}`);
 
-          return `
-            <tr>
-              <td>${dateStr}</td>
-              <td><strong>${att.score} / 100</strong></td>
-              <td><span class="level-pill level-${levelToCssClass(att.level)}">${att.level}</span></td>
-              <td>${correctNum} correct / ${missedNum} missed</td>
-              <td>${escapeHtml(att.feedback ? att.feedback.slice(0, 70) + "..." : "")}</td>
-            </tr>
-          `;
-        })
-        .join("");
-    } else {
-      topicHistoryTbody.innerHTML = '<tr><td colspan="5" class="empty-note">No past attempts yet for this topic.</td></tr>';
-    }
-  } catch (err) {
-    console.error("Failed to load topic history:", err);
+  if (res.ok && Array.isArray(res.data.data) && res.data.data.length > 0) {
+    topicHistoryTbody.innerHTML = res.data.data
+      .map((att) => {
+        const dateStr = new Date(att.created_at).toLocaleString("en-IN", {
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const correctNum = Array.isArray(att.correct_concepts) ? att.correct_concepts.length : 0;
+        const missedNum = Array.isArray(att.missed_concepts) ? att.missed_concepts.length : 0;
+
+        return `
+          <tr>
+            <td>${dateStr}</td>
+            <td><strong>${att.score} / 100</strong></td>
+            <td><span class="level-pill level-${levelToCssClass(att.level)}">${att.level}</span></td>
+            <td>${correctNum} correct / ${missedNum} missed</td>
+            <td>${escapeHtml(att.feedback ? att.feedback.slice(0, 70) + "..." : "")}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  } else {
+    topicHistoryTbody.innerHTML = '<tr><td colspan="5" class="empty-note">No past recall attempts recorded yet for this topic.</td></tr>';
   }
 }
 
 // =========================================================
-// SUBJECTS VIEW & TOPIC CREATION
+// SUBJECTS VIEW & TOPIC CREATION (WITH CONFIRM DELETE)
 // =========================================================
 
 const topicsGrid = document.getElementById("topicsGrid");
@@ -1245,7 +1651,14 @@ async function loadTopicsForSubjectsView() {
   if (!topicsGrid) return;
 
   if (globalTopics.length === 0) {
-    topicsGrid.innerHTML = '<p class="empty-note">No topics created yet.</p>';
+    topicsGrid.innerHTML = `
+      <div class="empty-state" style="grid-column: 1/-1;">
+        <span class="empty-state-icon" aria-hidden="true">📚</span>
+        <h3 class="empty-state-title">No Study Topics Available</h3>
+        <p class="empty-state-text">Create your first custom study topic with original notes to enable active recall sessions.</p>
+        <button class="btn btn-primary btn-small empty-state-btn" onclick="openTopicModal()">+ Add Subject Topic</button>
+      </div>
+    `;
     return;
   }
 
@@ -1253,6 +1666,8 @@ async function loadTopicsForSubjectsView() {
     .map((t) => {
       const conceptCount = Array.isArray(t.key_concepts) ? t.key_concepts.length : 0;
       const snippet = t.notes ? t.notes.slice(0, 140) + "..." : "";
+      const isCustomUserTopic = Boolean(t.user_id);
+
       return `
         <article class="topic-card">
           <div class="topic-tag-row">
@@ -1265,6 +1680,11 @@ async function loadTopicsForSubjectsView() {
             <button class="btn btn-primary btn-small" onclick="jumpToRecallTopic('${t.id}')">
               🧠 Start Recall
             </button>
+            ${isCustomUserTopic ? `
+              <button class="btn btn-small btn-danger" onclick="deleteTopicItem('${t.id}')" title="Delete custom topic">
+                🗑️ Delete
+              </button>
+            ` : ""}
           </div>
         </article>
       `;
@@ -1278,55 +1698,121 @@ window.jumpToRecallTopic = function (topicId) {
   setSelectedTopic(topicId);
 };
 
+window.deleteTopicItem = async function (topicId) {
+  const topic = globalTopics.find((t) => t.id === topicId);
+  const topicTitle = topic ? topic.title : "this topic";
+
+  const confirmed = await showConfirmDialog({
+    title: "Delete Custom Topic?",
+    message: `Are you sure you want to permanently delete "${topicTitle}" and all its recall history?`,
+    confirmText: "Delete Topic",
+    danger: true,
+  });
+
+  if (!confirmed) return;
+
+  const res = await apiFetch(`/api/topics/${topicId}`, {
+    method: "DELETE",
+  });
+
+  if (res.ok) {
+    showToast("Topic deleted successfully.", "info");
+    await loadTopicsForSubjectsView();
+    await loadTopicsForRecall();
+  } else {
+    showToast(res.error || "Failed to delete topic.", "error");
+  }
+};
+
 function openTopicModal() {
   if (topicForm) topicForm.reset();
-  if (topicDialog) topicDialog.showModal();
+  clearTopicFormErrors();
+  if (topicDialog && typeof topicDialog.showModal === "function") {
+    topicDialog.showModal();
+    const titleInput = document.getElementById("newTopicTitle");
+    if (titleInput) titleInput.focus();
+  }
 }
 
 function closeTopicModal() {
-  if (topicDialog) topicDialog.close();
+  if (topicDialog && topicDialog.open) {
+    topicDialog.close();
+  }
 }
+
+function clearTopicFormErrors() {
+  const titleErr = document.getElementById("topicTitleError");
+  const subjErr = document.getElementById("topicSubjectError");
+  const notesErr = document.getElementById("topicNotesError");
+  if (titleErr) titleErr.textContent = "";
+  if (subjErr) subjErr.textContent = "";
+  if (notesErr) notesErr.textContent = "";
+}
+
+window.openTopicModal = openTopicModal;
 
 if (openNewTopicModalBtn) openNewTopicModalBtn.addEventListener("click", openTopicModal);
 if (openAddTopicBtn) openAddTopicBtn.addEventListener("click", openTopicModal);
 if (cancelTopicBtn) cancelTopicBtn.addEventListener("click", closeTopicModal);
+if (closeTopicDialogBtn) closeTopicDialogBtn.addEventListener("click", closeTopicModal);
 
 if (topicForm) {
   topicForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const title = document.getElementById("newTopicTitle").value.trim();
-    const subject = document.getElementById("newTopicSubject").value.trim();
-    const question = document.getElementById("newTopicQuestion").value.trim();
-    const notes = document.getElementById("newTopicNotes").value.trim();
+    clearTopicFormErrors();
 
-    if (!title || !notes) {
-      alert("Please provide at least a title and study notes.");
+    const titleInput = document.getElementById("newTopicTitle");
+    const subjectInput = document.getElementById("newTopicSubject");
+    const questionInput = document.getElementById("newTopicQuestion");
+    const notesInput = document.getElementById("newTopicNotes");
+
+    const title = titleInput ? titleInput.value.trim() : "";
+    const subject = subjectInput ? subjectInput.value.trim() : "";
+    const question = questionInput ? questionInput.value.trim() : "";
+    const notes = notesInput ? notesInput.value.trim() : "";
+
+    let hasError = false;
+    if (!title) {
+      const err = document.getElementById("topicTitleError");
+      if (err) err.textContent = "Please provide a topic title.";
+      hasError = true;
+    }
+    if (!subject) {
+      const err = document.getElementById("topicSubjectError");
+      if (err) err.textContent = "Please specify a subject or category.";
+      hasError = true;
+    }
+    if (!notes || notes.length < 10) {
+      const err = document.getElementById("topicNotesError");
+      if (err) err.textContent = "Please write complete study notes (at least 10 characters).";
+      hasError = true;
+    }
+
+    if (hasError) return;
+
+    setButtonLoading(saveTopicBtn, true, "Saving Topic...");
+
+    const res = await apiFetch("/api/topics", {
+      method: "POST",
+      body: JSON.stringify({ title, subject, question, notes }),
+    });
+
+    setButtonLoading(saveTopicBtn, false);
+
+    if (!res.ok) {
+      showToast(res.error || "Failed to create topic.", "error");
       return;
     }
 
-    try {
-      const res = await fetch("/api/topics", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ title, subject, question, notes }),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Failed to create topic.");
-      }
-
-      closeTopicModal();
-      await loadTopicsForRecall(json.data.id);
-      switchView("recall");
-    } catch (err) {
-      alert("Error adding topic: " + err.message);
-    }
+    closeTopicModal();
+    showToast(`Topic "${title}" created successfully!`, "success");
+    await loadTopicsForRecall(res.data.data.id);
+    switchView("recall");
   });
 }
 
 // =========================================================
-// PHASE 5: PERSONALIZED LEARNING ANALYTICS FRONTEND
+// PHASE 5 & 7: PERSONALIZED LEARNING ANALYTICS FRONTEND
 // =========================================================
 
 const analyticsOverallScore = document.getElementById("analyticsOverallScore");
@@ -1349,11 +1835,9 @@ const allHistoryTbody = document.getElementById("allHistoryTbody");
 async function loadLearningAnalyticsDashboard() {
   try {
     // 1. Overview KPIs
-    const overviewRes = await fetch("/api/analytics/overview", { headers: getAuthHeaders() });
-    const overviewJson = await overviewRes.json();
-
-    if (overviewJson.success && overviewJson.data) {
-      const d = overviewJson.data;
+    const overviewRes = await apiFetch("/api/analytics/overview");
+    if (overviewRes.ok && overviewRes.data.data) {
+      const d = overviewRes.data.data;
 
       if (analyticsOverallScore) analyticsOverallScore.textContent = d.overall_learning_score;
       if (analyticsOverallLevel) {
@@ -1420,11 +1904,10 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 2. Personalized Learning Insights
-    const insightsRes = await fetch("/api/analytics/insights", { headers: getAuthHeaders() });
-    const insightsJson = await insightsRes.json();
+    const insightsRes = await apiFetch("/api/analytics/insights");
     if (analyticsInsightsContainer) {
-      if (insightsJson.success && Array.isArray(insightsJson.data) && insightsJson.data.length > 0) {
-        analyticsInsightsContainer.innerHTML = insightsJson.data
+      if (insightsRes.ok && Array.isArray(insightsRes.data.data) && insightsRes.data.data.length > 0) {
+        analyticsInsightsContainer.innerHTML = insightsRes.data.data
           .map((ins) => {
             const severityClass = ins.severity === "positive" ? "insight-positive" : ins.severity === "warning" ? "insight-warning" : "insight-info";
             const icon = ins.severity === "positive" ? "🌟" : ins.severity === "warning" ? "⚠️" : "💡";
@@ -1432,7 +1915,7 @@ async function loadLearningAnalyticsDashboard() {
             return `
               <div class="insight-card ${severityClass}">
                 <div class="insight-header">
-                  <span>${icon}</span>
+                  <span aria-hidden="true">${icon}</span>
                   <h4 class="insight-title">${escapeHtml(ins.title)}</h4>
                 </div>
                 <p class="insight-message">${escapeHtml(ins.message)}</p>
@@ -1446,18 +1929,17 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 3. Recall Performance Trend Visualizer
-    const trendRes = await fetch("/api/analytics/recall-trend", { headers: getAuthHeaders() });
-    const trendJson = await trendRes.json();
+    const trendRes = await apiFetch("/api/analytics/recall-trend");
     if (recallTrendContainer) {
-      if (trendJson.success && Array.isArray(trendJson.data) && trendJson.data.length > 0) {
-        recallTrendContainer.innerHTML = trendJson.data
+      if (trendRes.ok && Array.isArray(trendRes.data.data) && trendRes.data.data.length > 0) {
+        recallTrendContainer.innerHTML = trendRes.data.data
           .map((item) => {
             const heightPct = Math.max(10, Math.min(100, item.average_score));
             const fillClass = item.average_score >= 80 ? "fill-high" : item.average_score >= 60 ? "fill-medium" : "fill-low";
             const formattedDate = new Date(item.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 
             return `
-              <div class="trend-bar-group" title="${item.date}: ${item.average_score}% avg (${item.attempts_count} attempt${item.attempts_count === 1 ? '' : 's'})">
+              <div class="trend-bar-group" title="${item.date}: ${item.average_score}% avg (${item.attempts_count} attempt${item.attempts_count === 1 ? '' : 's'})" tabindex="0" aria-label="${item.date}: ${item.average_score}% average score">
                 <span class="trend-bar-score">${item.average_score}%</span>
                 <div class="trend-bar-track">
                   <div class="trend-bar-fill ${fillClass}" style="height: ${heightPct}%;"></div>
@@ -1468,23 +1950,27 @@ async function loadLearningAnalyticsDashboard() {
           })
           .join("");
       } else {
-        recallTrendContainer.innerHTML = '<p class="empty-note">Complete recall sessions to visualize your performance trend.</p>';
+        recallTrendContainer.innerHTML = `
+          <div class="empty-state" style="width: 100%;">
+            <span class="empty-state-icon" aria-hidden="true">📈</span>
+            <p class="empty-state-text">Complete active recall sessions to visualize your memory trend over time.</p>
+          </div>
+        `;
       }
     }
 
     // 4. Subject-Wise Mastery Breakdown
-    const subjRes = await fetch("/api/analytics/subjects", { headers: getAuthHeaders() });
-    const subjJson = await subjRes.json();
+    const subjRes = await apiFetch("/api/analytics/subjects");
     if (subjectsAnalyticsList) {
-      if (subjJson.success && Array.isArray(subjJson.data) && subjJson.data.length > 0) {
-        subjectsAnalyticsList.innerHTML = subjJson.data
+      if (subjRes.ok && Array.isArray(subjRes.data.data) && subjRes.data.data.length > 0) {
+        subjectsAnalyticsList.innerHTML = subjRes.data.data
           .map((s) => `
             <div class="subject-stat-card">
               <div class="subject-stat-top">
                 <span class="subject-stat-title">${escapeHtml(s.subject)}</span>
                 <span class="level-pill level-${levelToCssClass(s.mastery_level)}">${s.mastery_percentage}% (${s.mastery_level})</span>
               </div>
-              <div class="progress-bar">
+              <div class="progress-bar" role="progressbar" aria-valuenow="${s.mastery_percentage}" aria-valuemin="0" aria-valuemax="100">
                 <span class="progress-fill" style="width: ${Math.max(5, s.mastery_percentage)}%;"></span>
               </div>
               <div class="subject-meta-tags">
@@ -1501,15 +1987,16 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 5. Topic Mastery Table
-    const topicsRes = await fetch("/api/analytics/topics", { headers: getAuthHeaders() });
-    const topicsJson = await topicsRes.json();
+    const topicsRes = await apiFetch("/api/analytics/topics");
     if (topicMasteryTbody) {
-      if (topicsJson.success && Array.isArray(topicsJson.data) && topicsJson.data.length > 0) {
-        topicMasteryTbody.innerHTML = topicsJson.data
+      if (topicsRes.ok && Array.isArray(topicsRes.data.data) && topicsRes.data.data.length > 0) {
+        topicMasteryTbody.innerHTML = topicsRes.data.data
           .map((t) => {
             const latestDisplay = t.latest_score !== null ? `${t.latest_score}%` : "--";
             const avgDisplay = t.average_score !== null ? `${t.average_score}%` : "--";
-            const revStatus = t.pending_revisions > 0 ? `<span class="urgency-badge urgency-due-today">Pending</span>` : `<span class="urgency-badge urgency-upcoming">Up to date</span>`;
+            const revStatus = t.pending_revisions > 0
+              ? `<span class="urgency-badge urgency-due-today">Pending</span>`
+              : `<span class="urgency-badge urgency-upcoming">Up to date</span>`;
 
             return `
               <tr>
@@ -1533,11 +2020,10 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 6. Recent Recall Evaluations History
-    const historyRes = await fetch("/api/recall/history", { headers: getAuthHeaders() });
-    const historyJson = await historyRes.json();
+    const historyRes = await apiFetch("/api/recall/history");
     if (allHistoryTbody) {
-      if (historyJson.success && Array.isArray(historyJson.data) && historyJson.data.length > 0) {
-        allHistoryTbody.innerHTML = historyJson.data
+      if (historyRes.ok && Array.isArray(historyRes.data.data) && historyRes.data.data.length > 0) {
+        allHistoryTbody.innerHTML = historyRes.data.data
           .slice(0, 10)
           .map((att) => {
             const dateStr = new Date(att.created_at).toLocaleDateString("en-IN", {
@@ -1572,9 +2058,14 @@ async function initializeDashboardData() {
   await loadRevisionQueue();
 }
 
-// Check authentication state on page load
+// Check authentication state and route on page load
 verifyAuthOrPrompt().then((isAuthenticated) => {
   if (isAuthenticated) {
     initializeDashboardData();
+    const hash = window.location.hash.replace("#", "");
+    if (hash && viewPanes[hash]) {
+      switchView(hash);
+    }
   }
 });
+

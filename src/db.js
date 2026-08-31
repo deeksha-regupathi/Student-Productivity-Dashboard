@@ -820,12 +820,25 @@ function deleteTask(id, userId, db = getDatabase()) {
   return result.changes > 0;
 }
 
+function deleteTopic(id, userId, db = getDatabase()) {
+  if (!userId || !id) return false;
+  // Users can only delete their own created topics (user_id = userId)
+  const existing = db.prepare("SELECT * FROM topics WHERE id = ? AND user_id = ?").get(id, userId);
+  if (!existing) return false;
+
+  db.prepare("DELETE FROM revisions WHERE topic_id = ?").run(id);
+  db.prepare("DELETE FROM recall_attempts WHERE topic_id = ?").run(id);
+  const result = db.prepare("DELETE FROM topics WHERE id = ? AND user_id = ?").run(id, userId);
+  return result.changes > 0;
+}
+
 module.exports = {
   getDatabase,
   initSchema,
   getAllTopics,
   getTopicById,
   createTopic,
+  deleteTopic,
   saveRecallAttempt,
   getRecallAttemptById,
   getRecallHistoryByTopic,
@@ -842,3 +855,4 @@ module.exports = {
   updateTask,
   deleteTask
 };
+

@@ -1,99 +1,130 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="StudyPulse — Student Productivity Dashboard, Spaced Repetition & Active Recall AI Assistant" />
     <title>StudyPulse — Student Productivity Dashboard & AI Recall</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- Skip to main content link for keyboard accessibility -->
+    <a href="#mainContent" class="skip-link">Skip to main content</a>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true" role="status"></div>
+
     <div class="app">
       <!-- Left sidebar -->
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-          <span class="brand-mark" aria-hidden="true">SP</span>
-          <div>
-            <p class="brand-name">StudyPulse</p>
-            <p class="brand-tagline">Stay focused</p>
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
+        <div class="sidebar-brand-row">
+          <div class="sidebar-brand">
+            <span class="brand-mark" aria-hidden="true">SP</span>
+            <div>
+              <p class="brand-name">StudyPulse</p>
+              <p class="brand-tagline">Stay focused & retain more</p>
+            </div>
           </div>
+          <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" aria-label="Close navigation sidebar">
+            ✕
+          </button>
         </div>
 
-        <nav class="sidebar-nav" aria-label="Main">
-          <a class="nav-link is-active" href="#dashboard" data-view="dashboard">
+        <nav class="sidebar-nav" aria-label="Main navigation">
+          <a class="nav-link is-active" href="#dashboard" data-view="dashboard" id="navDashboard" aria-current="page">
             <span class="nav-icon" aria-hidden="true">▦</span>
-            Dashboard
+            <span>Dashboard</span>
           </a>
-          <a class="nav-link" href="#recall" data-view="recall">
+          <a class="nav-link" href="#recall" data-view="recall" id="navRecall">
             <span class="nav-icon" aria-hidden="true">🧠</span>
-            Active Recall
+            <span>Active Recall</span>
           </a>
-          <a class="nav-link" href="#tasks" data-view="tasks">
+          <a class="nav-link" href="#tasks" data-view="tasks" id="navTasks">
             <span class="nav-icon" aria-hidden="true">☑</span>
-            Tasks
+            <span>Tasks</span>
           </a>
-          <a class="nav-link" href="#subjects" data-view="subjects">
+          <a class="nav-link" href="#subjects" data-view="subjects" id="navSubjects">
             <span class="nav-icon" aria-hidden="true">▤</span>
-            Subjects & Notes
+            <span>Subjects & Notes</span>
           </a>
-          <a class="nav-link" href="#analytics" data-view="analytics">
+          <a class="nav-link" href="#analytics" data-view="analytics" id="navAnalytics">
             <span class="nav-icon" aria-hidden="true">📊</span>
-            Learning Analytics
+            <span>Learning Analytics</span>
           </a>
-          <a class="nav-link" href="#settings" data-view="settings">
+          <a class="nav-link" href="#settings" data-view="settings" id="navSettings">
             <span class="nav-icon" aria-hidden="true">⚙</span>
-            Settings
+            <span>Settings</span>
           </a>
         </nav>
 
         <div class="sidebar-footer">
-          <p class="sidebar-tip-label">Today's focus</p>
+          <div class="sidebar-tip-header">
+            <span class="sidebar-tip-icon" aria-hidden="true">🎯</span>
+            <p class="sidebar-tip-label">Today's focus</p>
+          </div>
           <p class="sidebar-tip" id="sidebarTip">Add a task to set today's focus.</p>
         </div>
       </aside>
 
       <div class="content">
         <!-- Top header -->
-        <header class="header">
+        <header class="header" role="banner">
           <button
             class="menu-btn"
             id="menuBtn"
             type="button"
-            aria-label="Open navigation"
+            aria-label="Open navigation menu"
+            aria-expanded="false"
+            aria-controls="sidebar"
           >
-            ☰
+            <span class="menu-icon" aria-hidden="true">☰</span>
           </button>
 
           <div class="header-search">
-            <label class="sr-only" for="searchInput">Search</label>
-            <input
-              id="searchInput"
-              type="search"
-              placeholder="Search tasks, subjects, or notes..."
-            />
+            <label class="sr-only" for="searchInput">Search tasks, subjects, or notes</label>
+            <div class="search-input-wrapper">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input
+                id="searchInput"
+                type="search"
+                placeholder="Search tasks, subjects, or notes..."
+                autocomplete="off"
+                aria-label="Search tasks, subjects, or notes"
+              />
+              <button class="search-clear-btn" id="searchClearBtn" type="button" aria-label="Clear search" hidden>✕</button>
+            </div>
           </div>
 
           <div class="header-right">
+            <button class="theme-toggle-btn" id="themeToggleBtn" type="button" aria-label="Toggle dark / light theme" title="Switch Theme">
+              <span class="theme-icon" id="themeIcon" aria-hidden="true">🌙</span>
+              <span class="theme-label sr-only">Toggle Theme</span>
+            </button>
+
             <p class="header-date" id="currentDate">Loading date...</p>
-            <div class="user-chip" id="userChip">
+
+            <div class="user-chip" id="userChip" tabindex="0" role="region" aria-label="User profile">
               <span class="user-avatar" id="userAvatar" aria-hidden="true">D</span>
-              <div>
+              <div class="user-info">
                 <p class="user-name" id="userName">Deeksha</p>
                 <p class="user-role" id="userRole">Student</p>
               </div>
             </div>
+
             <button class="btn btn-small btn-logout" id="logoutBtn" type="button" title="Sign out of your account">
-              Sign Out
+              <span class="logout-icon" aria-hidden="true">🚪</span>
+              <span class="btn-text">Sign Out</span>
             </button>
           </div>
         </header>
 
-        <main class="main">
-          <!-- ================= VIEW 1: DASHBOARD (Phase 1, 2 & 4) ================= -->
+        <main class="main" id="mainContent" role="main" tabindex="-1">
+          <!-- ================= VIEW 1: DASHBOARD (Phase 1, 2, 4 & 7) ================= -->
           <div id="viewDashboard" class="view-pane">
             <!-- Welcome section -->
             <section class="welcome" aria-labelledby="welcomeHeading">
               <div>
-                <p class="welcome-kicker">Good evening</p>
+                <p class="welcome-kicker" id="welcomeKicker">Good day</p>
                 <h1 id="welcomeHeading">Welcome back, Deeksha</h1>
                 <p class="welcome-text" id="welcomeText">
                   Add a task to start planning your day.
@@ -101,50 +132,79 @@
               </div>
               <div class="welcome-badge">
                 <p class="welcome-badge-label">Focus streak</p>
-                <p class="welcome-badge-value">6 days</p>
+                <p class="welcome-badge-value">6 days 🔥</p>
               </div>
             </section>
 
             <!-- KPI cards -->
-            <section class="kpi-grid" aria-label="Key stats">
-              <article class="kpi-card">
-                <p class="kpi-label">Total Tasks</p>
-                <p class="kpi-value" id="kpiTotal">0</p>
-                <p class="kpi-meta">Saved in this browser</p>
+            <section class="kpi-grid" aria-label="Dashboard Key Performance Indicators">
+              <article class="kpi-card" tabindex="0">
+                <div class="kpi-card-inner">
+                  <span class="kpi-icon icon-tasks" aria-hidden="true">📝</span>
+                  <div>
+                    <p class="kpi-label">Total Tasks</p>
+                    <p class="kpi-value" id="kpiTotal">0</p>
+                    <p class="kpi-meta">Active study tasks</p>
+                  </div>
+                </div>
               </article>
-              <article class="kpi-card">
-                <p class="kpi-label">Tasks Completed</p>
-                <p class="kpi-value" id="kpiCompleted">0</p>
-                <p class="kpi-meta">Marked as done</p>
+              <article class="kpi-card" tabindex="0">
+                <div class="kpi-card-inner">
+                  <span class="kpi-icon icon-completed" aria-hidden="true">✅</span>
+                  <div>
+                    <p class="kpi-label">Tasks Completed</p>
+                    <p class="kpi-value" id="kpiCompleted">0</p>
+                    <p class="kpi-meta">Marked as done</p>
+                  </div>
+                </div>
               </article>
-              <article class="kpi-card">
-                <p class="kpi-label">Pending Tasks</p>
-                <p class="kpi-value" id="kpiPending">0</p>
-                <p class="kpi-meta">Still to finish</p>
+              <article class="kpi-card" tabindex="0">
+                <div class="kpi-card-inner">
+                  <span class="kpi-icon icon-pending" aria-hidden="true">⏳</span>
+                  <div>
+                    <p class="kpi-label">Pending Tasks</p>
+                    <p class="kpi-value" id="kpiPending">0</p>
+                    <p class="kpi-meta">Still to finish</p>
+                  </div>
+                </div>
               </article>
-              <article class="kpi-card">
-                <p class="kpi-label">Study Hours</p>
-                <p class="kpi-value">12.5</p>
-                <p class="kpi-meta">This week</p>
+              <article class="kpi-card" tabindex="0">
+                <div class="kpi-card-inner">
+                  <span class="kpi-icon icon-study" aria-hidden="true">⏱️</span>
+                  <div>
+                    <p class="kpi-label">Study Hours</p>
+                    <p class="kpi-value">12.5</p>
+                    <p class="kpi-meta">Target: 15 hrs/wk</p>
+                  </div>
+                </div>
               </article>
             </section>
 
-            <!-- Phase 4: Smart Revision Queue (Spaced Repetition) -->
-            <section class="panel revision-queue-panel" id="revisionQueueSection">
+            <!-- Phase 4 & 7: Smart Revision Queue (Spaced Repetition) -->
+            <section class="panel revision-queue-panel" id="revisionQueueSection" aria-labelledby="revisionQueueHeading">
               <div class="panel-header">
                 <div>
-                  <span class="view-kicker">Spaced Repetition</span>
-                  <h2>Smart Revision Queue</h2>
+                  <span class="view-kicker">Spaced Repetition Engine</span>
+                  <h2 id="revisionQueueHeading">Smart Revision Queue</h2>
                 </div>
-                <div class="revision-filter-tabs">
-                  <button class="filter-tab is-active" data-filter="all" id="filterRevAll">All (<span id="revCountAll">0</span>)</button>
-                  <button class="filter-tab tab-overdue" data-filter="overdue" id="filterRevOverdue">Overdue (<span id="revCountOverdue">0</span>)</button>
-                  <button class="filter-tab tab-due-today" data-filter="due_today" id="filterRevDueToday">Due Today (<span id="revCountDueToday">0</span>)</button>
-                  <button class="filter-tab tab-upcoming" data-filter="upcoming" id="filterRevUpcoming">Upcoming (<span id="revCountUpcoming">0</span>)</button>
+                <div class="revision-filter-tabs" role="tablist" aria-label="Filter revisions by urgency">
+                  <button class="filter-tab is-active" data-filter="all" id="filterRevAll" role="tab" aria-selected="true">
+                    All (<span id="revCountAll">0</span>)
+                  </button>
+                  <button class="filter-tab tab-overdue" data-filter="overdue" id="filterRevOverdue" role="tab" aria-selected="false">
+                    Overdue (<span id="revCountOverdue">0</span>)
+                  </button>
+                  <button class="filter-tab tab-due-today" data-filter="due_today" id="filterRevDueToday" role="tab" aria-selected="false">
+                    Due Today (<span id="revCountDueToday">0</span>)
+                  </button>
+                  <button class="filter-tab tab-upcoming" data-filter="upcoming" id="filterRevUpcoming" role="tab" aria-selected="false">
+                    Upcoming (<span id="revCountUpcoming">0</span>)
+                  </button>
                 </div>
               </div>
-              <div class="revision-queue-grid" id="revisionQueueList">
-                <p class="empty-note">Loading scheduled revisions...</p>
+              <div class="revision-queue-grid" id="revisionQueueList" aria-live="polite">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
               </div>
             </section>
 
@@ -155,27 +215,27 @@
                   <h2 id="tasksHeading">Today's Tasks</h2>
                   <div class="panel-actions">
                     <span class="panel-count" id="taskCount">0 tasks</span>
-                    <button class="btn btn-primary" id="addTaskBtn" type="button">
-                      Add Task
+                    <button class="btn btn-primary" id="addTaskBtn" type="button" aria-haspopup="dialog">
+                      <span>+ Add Task</span>
                     </button>
                   </div>
                 </div>
-                <ul class="task-list" id="taskList"></ul>
+                <ul class="task-list" id="taskList" aria-live="polite"></ul>
               </section>
 
               <!-- Weekly Study Progress -->
               <section class="panel" aria-labelledby="progressHeading">
                 <div class="panel-header">
                   <h2 id="progressHeading">Weekly Study Progress</h2>
-                  <span class="panel-count">12.5 / 15 hrs</span>
+                  <span class="panel-count">12.5 / 15 hrs (83%)</span>
                 </div>
-                <ul class="progress-list">
+                <ul class="progress-list" role="list">
                   <li class="progress-item">
                     <div class="progress-row">
                       <span>Mathematics</span>
                       <span>3.5 hrs</span>
                     </div>
-                    <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100">
                       <span class="progress-fill" style="width: 70%"></span>
                     </div>
                   </li>
@@ -184,16 +244,16 @@
                       <span>Physics</span>
                       <span>2.5 hrs</span>
                     </div>
-                    <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
                       <span class="progress-fill" style="width: 50%"></span>
                     </div>
                   </li>
                   <li class="progress-item">
                     <div class="progress-row">
                       <span>English</span>
-                      <span>2 hrs</span>
+                      <span>2.0 hrs</span>
                     </div>
-                    <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
                       <span class="progress-fill" style="width: 40%"></span>
                     </div>
                   </li>
@@ -202,16 +262,16 @@
                       <span>History</span>
                       <span>2.5 hrs</span>
                     </div>
-                    <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="55" aria-valuemin="0" aria-valuemax="100">
                       <span class="progress-fill" style="width: 55%"></span>
                     </div>
                   </li>
                   <li class="progress-item">
                     <div class="progress-row">
                       <span>Computer Science</span>
-                      <span>2 hrs</span>
+                      <span>2.0 hrs</span>
                     </div>
-                    <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-bar" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100">
                       <span class="progress-fill" style="width: 45%"></span>
                     </div>
                   </li>
@@ -225,32 +285,32 @@
                 <h2 id="deadlinesHeading">Upcoming Deadlines</h2>
                 <span class="panel-count" id="deadlineCount">0 upcoming</span>
               </div>
-              <ul class="deadline-list" id="deadlineList"></ul>
+              <ul class="deadline-list" id="deadlineList" aria-live="polite"></ul>
             </section>
           </div>
 
-          <!-- ================= VIEW 2: ACTIVE RECALL SESSION (Phase 3 & 4) ================= -->
+          <!-- ================= VIEW 2: ACTIVE RECALL SESSION (Phase 3, 4 & 7) ================= -->
           <div id="viewRecall" class="view-pane" hidden>
             <!-- Topic Selection Bar -->
-            <section class="panel recall-select-panel">
+            <section class="panel recall-select-panel" aria-labelledby="recallTitleHeading">
               <div class="recall-header-row">
                 <div>
                   <span class="view-kicker">Active Recall Practice</span>
-                  <h2 class="view-title">Test Your Memory & Understanding</h2>
-                  <p class="view-subtitle">Select a topic, review notes, then recall the concepts from memory without peeking.</p>
+                  <h2 class="view-title" id="recallTitleHeading">Test Your Memory & Understanding</h2>
+                  <p class="view-subtitle">Select a topic, review notes, then recall concepts from memory without looking at reference material.</p>
                 </div>
                 <div class="topic-picker-group">
-                  <label for="topicSelect" class="sr-only">Choose Topic</label>
-                  <select id="topicSelect" class="topic-select-dropdown">
+                  <label for="topicSelect" class="sr-only">Choose Topic for Recall Session</label>
+                  <select id="topicSelect" class="topic-select-dropdown" aria-label="Select study topic">
                     <option value="">Loading topics...</option>
                   </select>
-                  <button class="btn btn-primary" id="openNewTopicModalBtn" type="button">+ New Topic</button>
+                  <button class="btn btn-primary" id="openNewTopicModalBtn" type="button" aria-haspopup="dialog">+ New Topic</button>
                 </div>
               </div>
             </section>
 
             <!-- Topic Overview & Pre-Recall Prep Mode -->
-            <section class="panel" id="recallPrepCard">
+            <section class="panel" id="recallPrepCard" aria-labelledby="prepTopicTitle">
               <div class="topic-overview-header">
                 <div class="topic-tag-row">
                   <span class="subject-badge" id="prepSubjectBadge">Biology</span>
@@ -266,10 +326,10 @@
               <!-- Collapsible Notes for Study Mode (Will be HIDDEN during recall) -->
               <div class="study-notes-section" id="prepNotesContainer">
                 <div class="notes-toggle-bar">
-                  <h4>📖 Original Study Notes & Reference</h4>
+                  <h4>📖 Original Study Notes & Reference Material</h4>
                   <span class="notes-warning-tag">⚠️ Notes will be hidden once recall begins</span>
                 </div>
-                <div class="study-notes-content" id="prepNotesContent">
+                <div class="study-notes-content" id="prepNotesContent" tabindex="0">
                   <!-- Notes text rendered here -->
                 </div>
               </div>
@@ -282,39 +342,40 @@
             </section>
 
             <!-- Active Recall Form Mode (Notes HIDDEN) -->
-            <section class="panel recall-active-card" id="recallActiveCard" hidden>
+            <section class="panel recall-active-card" id="recallActiveCard" hidden aria-labelledby="activeTopicTitle">
               <div class="recall-active-header">
                 <div>
                   <span class="active-badge">🔴 Recall in Progress (Notes Hidden)</span>
                   <h3 class="topic-display-title" id="activeTopicTitle">Cellular Respiration & Mitochondria</h3>
                   <div class="question-box">
-                    <p class="question-box-label">Question:</p>
+                    <p class="question-box-label">Prompt Question:</p>
                     <p class="question-box-text" id="activeQuestionText"></p>
                   </div>
                 </div>
-                <div class="timer-box" id="recallTimerBox">
+                <div class="timer-box" id="recallTimerBox" aria-live="off">
                   <span class="timer-label">Time Elapsed</span>
                   <span class="timer-value" id="recallTimerDisplay">00:00</span>
                 </div>
               </div>
 
-              <form id="recallForm" class="recall-form">
+              <form id="recallForm" class="recall-form" novalidate>
                 <div class="textarea-header">
                   <label for="studentAnswerInput" class="textarea-label">
                     Write down everything you remember about this topic from memory:
                   </label>
-                  <span class="word-count" id="recallWordCount">0 words (0 characters)</span>
+                  <span class="word-count" id="recallWordCount" aria-live="polite">0 words (0 characters)</span>
                 </div>
 
                 <textarea
                   id="studentAnswerInput"
                   class="recall-textarea"
                   rows="9"
-                  placeholder="Type your recalled explanation here... Mention definitions, stages, formulas, key terminology, and how the concepts connect."
+                  placeholder="Type your recalled explanation here... Mention definitions, key stages, formulas, key terminology, and how the concepts connect."
                   required
+                  aria-describedby="recallAlert"
                 ></textarea>
 
-                <div class="recall-alert" id="recallAlert" hidden></div>
+                <div class="recall-alert" id="recallAlert" role="alert" hidden></div>
 
                 <div class="recall-form-actions">
                   <button type="button" class="btn" id="cancelActiveRecallBtn">
@@ -322,17 +383,17 @@
                   </button>
                   <button type="submit" class="btn btn-primary btn-large" id="submitRecallBtn">
                     <span class="btn-text">⚡ Submit Recall for Evaluation</span>
-                    <span class="btn-spinner" hidden>⏳ Evaluating...</span>
+                    <span class="btn-spinner" hidden>⏳ Evaluating with AI...</span>
                   </button>
                 </div>
               </form>
             </section>
 
             <!-- Evaluation Results Card -->
-            <section class="panel recall-result-card" id="recallResultCard" hidden>
+            <section class="panel recall-result-card" id="recallResultCard" hidden aria-labelledby="resultTopicTitle">
               <div class="result-header">
                 <div class="result-score-block">
-                  <div class="score-donut" id="resultScoreDonut">
+                  <div class="score-donut" id="resultScoreDonut" aria-label="Score">
                     <span class="score-number" id="resultScoreVal">--</span>
                     <span class="score-denom">/ 100</span>
                   </div>
@@ -348,10 +409,10 @@
                 </div>
               </div>
 
-              <!-- Phase 4: Spaced Repetition Next Revision Banner -->
+              <!-- Spaced Repetition Next Revision Banner -->
               <div class="next-revision-banner" id="nextRevisionBanner">
                 <div class="next-revision-info">
-                  <span class="next-revision-icon">📅</span>
+                  <span class="next-revision-icon" aria-hidden="true">📅</span>
                   <div>
                     <p class="next-revision-label">Spaced Repetition Schedule</p>
                     <p class="next-revision-text" id="resultNextRevisionText">Next revision: Calculating...</p>
@@ -362,7 +423,7 @@
 
               <!-- Feedback Summary -->
               <div class="feedback-card">
-                <h4 class="feedback-heading">💬 AI Feedback</h4>
+                <h4 class="feedback-heading">💬 Evaluation Feedback</h4>
                 <p class="feedback-text" id="resultFeedbackText">Feedback summary will appear here.</p>
               </div>
 
@@ -371,7 +432,7 @@
                 <!-- Correct Concepts -->
                 <div class="concept-column column-correct">
                   <div class="concept-col-header">
-                    <span class="col-icon">✅</span>
+                    <span class="col-icon" aria-hidden="true">✅</span>
                     <h4>Correctly Recalled (<span id="correctCount">0</span>)</h4>
                   </div>
                   <ul class="concept-pill-list" id="correctConceptsList"></ul>
@@ -380,7 +441,7 @@
                 <!-- Partial Concepts -->
                 <div class="concept-column column-partial">
                   <div class="concept-col-header">
-                    <span class="col-icon">⚠️</span>
+                    <span class="col-icon" aria-hidden="true">⚠️</span>
                     <h4>Partially Recalled (<span id="partialCount">0</span>)</h4>
                   </div>
                   <ul class="concept-pill-list" id="partialConceptsList"></ul>
@@ -389,7 +450,7 @@
                 <!-- Missed Concepts -->
                 <div class="concept-column column-missed">
                   <div class="concept-col-header">
-                    <span class="col-icon">❌</span>
+                    <span class="col-icon" aria-hidden="true">❌</span>
                     <h4>Missed Concepts (<span id="missedCount">0</span>)</h4>
                   </div>
                   <ul class="concept-pill-list" id="missedConceptsList"></ul>
@@ -405,21 +466,21 @@
               <!-- Revealed Notes Box (Toggled) -->
               <div class="revealed-notes-box" id="revealedNotesBox" hidden>
                 <h4>Original Notes Reference:</h4>
-                <div class="revealed-notes-text" id="revealedNotesText"></div>
+                <div class="revealed-notes-text" id="revealedNotesText" tabindex="0"></div>
               </div>
 
               <!-- Past Attempts on this Topic -->
               <div class="topic-history-section">
                 <h4>📜 Past Recall Attempts on this Topic</h4>
                 <div class="history-table-container">
-                  <table class="history-table" id="topicHistoryTable">
+                  <table class="history-table" id="topicHistoryTable" aria-label="Past Recall Attempts">
                     <thead>
                       <tr>
-                        <th>Date & Time</th>
-                        <th>Score</th>
-                        <th>Level</th>
-                        <th>Correct / Missed</th>
-                        <th>Feedback Preview</th>
+                        <th scope="col">Date & Time</th>
+                        <th scope="col">Score</th>
+                        <th scope="col">Level</th>
+                        <th scope="col">Correct / Missed</th>
+                        <th scope="col">Feedback Preview</th>
                       </tr>
                     </thead>
                     <tbody id="topicHistoryTbody">
@@ -433,34 +494,35 @@
 
           <!-- ================= VIEW 3: SUBJECTS & NOTES ================= -->
           <div id="viewSubjects" class="view-pane" hidden>
-            <section class="panel">
+            <section class="panel" aria-labelledby="subjectsHeading">
               <div class="panel-header">
                 <div>
-                  <span class="view-kicker">Study Material</span>
-                  <h2>Subjects & Reference Topics</h2>
+                  <span class="view-kicker">Curriculum & Notes</span>
+                  <h2 id="subjectsHeading">Subjects & Reference Topics</h2>
+                  <p class="view-subtitle">Browse study topics, manage notes, or create custom topics for active recall practice.</p>
                 </div>
-                <button class="btn btn-primary" id="openAddTopicBtn" type="button">+ Add Subject Topic</button>
+                <button class="btn btn-primary" id="openAddTopicBtn" type="button" aria-haspopup="dialog">+ Add Subject Topic</button>
               </div>
-              <div class="topics-cards-grid" id="topicsGrid">
+              <div class="topics-cards-grid" id="topicsGrid" aria-live="polite">
                 <!-- Dynamically rendered topic cards -->
               </div>
             </section>
           </div>
 
-          <!-- ================= VIEW 4: PERSONALIZED LEARNING ANALYTICS (Phase 5) ================= -->
+          <!-- ================= VIEW 4: PERSONALIZED LEARNING ANALYTICS (Phase 5 & 7) ================= -->
           <div id="viewAnalytics" class="view-pane" hidden>
-            <section class="panel">
+            <section class="panel" aria-labelledby="analyticsHeading">
               <div class="panel-header">
                 <div>
                   <span class="view-kicker">Personalized Insights</span>
-                  <h2>Learning Analytics & Progress Dashboard</h2>
-                  <p class="view-subtitle">Track retention mastery, score trends over time, subject performance, and data-driven learning insights.</p>
+                  <h2 id="analyticsHeading">Learning Analytics & Retention Dashboard</h2>
+                  <p class="view-subtitle">Track retention mastery, score trends over time, subject performance, and data-driven recommendations.</p>
                 </div>
               </div>
 
-              <!-- Phase 5: Overall Learning Analytics KPI Grid -->
-              <div class="analytics-kpi-grid">
-                <article class="analytics-kpi-card kpi-overall-score">
+              <!-- Overall Learning Analytics KPI Grid -->
+              <div class="analytics-kpi-grid" aria-label="Learning Analytics Metrics">
+                <article class="analytics-kpi-card kpi-overall-score" tabindex="0">
                   <div class="analytics-kpi-top">
                     <p class="kpi-label">Overall Learning Score</p>
                     <span class="level-pill level-excellent" id="analyticsOverallLevel">--</span>
@@ -472,45 +534,45 @@
                   <p class="kpi-meta">50% Recall + 30% Mastery + 20% Revision</p>
                 </article>
 
-                <article class="analytics-kpi-card">
+                <article class="analytics-kpi-card" tabindex="0">
                   <p class="kpi-label">Average Recall Score</p>
                   <p class="analytics-huge-score" id="analyticsAvgRecall">0%</p>
                   <p class="kpi-meta" id="analyticsTotalAttemptsMeta">Across 0 recall attempts</p>
                 </article>
 
-                <article class="analytics-kpi-card">
+                <article class="analytics-kpi-card" tabindex="0">
                   <p class="kpi-label">Topics Mastered</p>
                   <p class="analytics-huge-score" id="analyticsTopicsMastered">0</p>
                   <p class="kpi-meta" id="analyticsMasteryRatioMeta">0 of 0 topics ≥ 85% mastery</p>
                 </article>
 
-                <article class="analytics-kpi-card">
+                <article class="analytics-kpi-card" tabindex="0">
                   <p class="kpi-label">Revision Completion Rate</p>
                   <p class="analytics-huge-score" id="analyticsRevCompletion">0%</p>
                   <p class="kpi-meta" id="analyticsActiveRevsMeta">0 completed / 0 scheduled</p>
                 </article>
               </div>
 
-              <!-- Phase 5: Personalized Learning Insights Section -->
-              <div class="insights-section" style="margin-top: 24px;">
+              <!-- Personalized Learning Insights Section -->
+              <div class="insights-section">
                 <div class="section-title-row">
                   <h3>🧠 Personalized Learning Insights</h3>
                   <span class="panel-count">Generated from study performance</span>
                 </div>
-                <div class="insights-grid" id="analyticsInsightsContainer">
+                <div class="insights-grid" id="analyticsInsightsContainer" aria-live="polite">
                   <p class="empty-note">Loading personalized learning insights...</p>
                 </div>
               </div>
 
-              <!-- Phase 5: Trend & Subject Performance Two-Column Grid -->
-              <div class="analytics-two-col" style="margin-top: 24px;">
+              <!-- Trend & Subject Performance Two-Column Grid -->
+              <div class="analytics-two-col">
                 <!-- Recall Performance Trend Chart -->
                 <div class="analytics-col-panel">
                   <div class="section-title-row">
                     <h3>📈 Recall Performance Trend</h3>
                     <span class="panel-count">Score over time</span>
                   </div>
-                  <div class="trend-chart-container" id="recallTrendContainer">
+                  <div class="trend-chart-container" id="recallTrendContainer" aria-label="Recall Performance Trend Chart">
                     <p class="empty-note">Complete recall sessions to visualize your performance trend.</p>
                   </div>
                 </div>
@@ -521,14 +583,14 @@
                     <h3>📚 Subject-wise Performance</h3>
                     <span class="panel-count">Mastery breakdown</span>
                   </div>
-                  <div class="subjects-analytics-list" id="subjectsAnalyticsList">
+                  <div class="subjects-analytics-list" id="subjectsAnalyticsList" aria-live="polite">
                     <p class="empty-note">No subjects available.</p>
                   </div>
                 </div>
               </div>
 
               <!-- Strongest & Topics Needing Attention Breakdown -->
-              <div class="topic-strength-grid" style="margin-top: 24px;">
+              <div class="topic-strength-grid">
                 <div class="strength-card strength-high">
                   <h4>🏆 Strongest Topics (Mastery ≥ 70%)</h4>
                   <ul class="strength-list" id="analyticsStrongestList">
@@ -544,23 +606,23 @@
               </div>
 
               <!-- Topic Mastery Comprehensive Table -->
-              <div class="all-history-section" style="margin-top: 28px;">
+              <div class="all-history-section">
                 <div class="section-title-row">
                   <h3>📑 Comprehensive Topic Mastery Matrix</h3>
                   <span class="panel-count">All curriculum topics</span>
                 </div>
                 <div class="history-table-container">
-                  <table class="history-table" id="topicMasteryTable">
+                  <table class="history-table" id="topicMasteryTable" aria-label="Comprehensive Topic Mastery Table">
                     <thead>
                       <tr>
-                        <th>Topic Name</th>
-                        <th>Subject</th>
-                        <th>Latest Score</th>
-                        <th>Avg Score</th>
-                        <th>Attempts</th>
-                        <th>Mastery Level</th>
-                        <th>Revision Status</th>
-                        <th>Action</th>
+                        <th scope="col">Topic Name</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Latest Score</th>
+                        <th scope="col">Avg Score</th>
+                        <th scope="col">Attempts</th>
+                        <th scope="col">Mastery Level</th>
+                        <th scope="col">Revision Status</th>
+                        <th scope="col">Action</th>
                       </tr>
                     </thead>
                     <tbody id="topicMasteryTbody">
@@ -571,17 +633,20 @@
               </div>
 
               <!-- Recent Recall Evaluations History -->
-              <div class="all-history-section" style="margin-top: 24px;">
-                <h3>Recent Recall Evaluations</h3>
+              <div class="all-history-section">
+                <div class="section-title-row">
+                  <h3>Recent Recall Evaluations</h3>
+                  <span class="panel-count">Recent history</span>
+                </div>
                 <div class="history-table-container">
-                  <table class="history-table" id="allHistoryTable">
+                  <table class="history-table" id="allHistoryTable" aria-label="Recent Recall Evaluations Table">
                     <thead>
                       <tr>
-                        <th>Topic</th>
-                        <th>Subject</th>
-                        <th>Score</th>
-                        <th>Level</th>
-                        <th>Date</th>
+                        <th scope="col">Topic</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Score</th>
+                        <th scope="col">Level</th>
+                        <th scope="col">Date</th>
                       </tr>
                     </thead>
                     <tbody id="allHistoryTbody">
@@ -595,11 +660,24 @@
 
           <!-- ================= VIEW 5: SETTINGS ================= -->
           <div id="viewSettings" class="view-pane" hidden>
-            <section class="panel">
+            <section class="panel" aria-labelledby="settingsHeading">
               <div class="panel-header">
-                <h2>System & Recall Settings</h2>
+                <h2 id="settingsHeading">System & Preference Settings</h2>
               </div>
               <div class="settings-content">
+                <div class="settings-item">
+                  <div>
+                    <h4>Appearance & Theme</h4>
+                    <p class="settings-desc">Choose between Light Mode, Dark Mode, or Automatic system appearance.</p>
+                  </div>
+                  <div class="theme-select-wrapper">
+                    <select id="themeSelectDropdown" class="form-select" aria-label="Select application theme">
+                      <option value="light">☀️ Light Theme</option>
+                      <option value="dark">🌙 Dark Theme</option>
+                      <option value="system">🖥️ System Default</option>
+                    </select>
+                  </div>
+                </div>
                 <div class="settings-item">
                   <div>
                     <h4>AI Evaluation Engine</h4>
@@ -630,10 +708,10 @@
                 </div>
                 <div class="settings-item">
                   <div>
-                    <h4>Database Storage</h4>
-                    <p class="settings-desc">Persistent local SQLite database storing topics, task states, recall attempts, and revision schedules.</p>
+                    <h4>Database Storage & Security</h4>
+                    <p class="settings-desc">Persistent local SQLite database with multi-user isolation, PBKDF2 password hashing, and session authentication.</p>
                   </div>
-                  <span class="status-tag is-done">Connected</span>
+                  <span class="status-tag is-done">Securely Connected</span>
                 </div>
               </div>
             </section>
@@ -642,152 +720,214 @@
       </div>
     </div>
 
+    <!-- Backdrop Overlay for Mobile Sidebar -->
     <div class="overlay" id="overlay" hidden></div>
 
-    <!-- Phase 2 Task Modal -->
-    <dialog class="task-dialog" id="taskDialog">
-      <form id="taskForm">
-        <h2 id="dialogTitle">Add Task</h2>
+    <!-- Phase 2 & 7 Task Modal Dialog -->
+    <dialog class="task-dialog" id="taskDialog" aria-labelledby="dialogTitle" role="dialog">
+      <form id="taskForm" novalidate>
+        <div class="dialog-header">
+          <h2 id="dialogTitle">Add Task</h2>
+          <button class="dialog-close-btn" id="closeTaskDialogBtn" type="button" aria-label="Close task dialog">✕</button>
+        </div>
         <input type="hidden" id="taskId" />
 
-        <label for="taskTitle">Task title</label>
-        <input
-          id="taskTitle"
-          type="text"
-          required
-          maxlength="80"
-          placeholder="e.g. Revise Algebra notes"
-        />
+        <div class="form-group">
+          <label for="taskTitle">Task title <span class="required-mark">*</span></label>
+          <input
+            id="taskTitle"
+            type="text"
+            required
+            maxlength="80"
+            placeholder="e.g. Revise Cellular Respiration notes"
+            autocomplete="off"
+          />
+          <span class="field-error" id="taskTitleError" aria-live="polite"></span>
+        </div>
 
-        <label for="taskDescription">Description</label>
-        <textarea
-          id="taskDescription"
-          required
-          rows="3"
-          maxlength="200"
-          placeholder="What do you need to do?"
-        ></textarea>
+        <div class="form-group">
+          <label for="taskDescription">Description</label>
+          <textarea
+            id="taskDescription"
+            rows="3"
+            maxlength="200"
+            placeholder="What key goals do you need to accomplish?"
+          ></textarea>
+        </div>
 
-        <label for="taskPriority">Priority</label>
-        <select id="taskPriority" required>
-          <option value="low">Low</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High</option>
-        </select>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="taskPriority">Priority</label>
+            <select id="taskPriority" required>
+              <option value="low">Low Priority</option>
+              <option value="medium" selected>Medium Priority</option>
+              <option value="high">High Priority</option>
+            </select>
+          </div>
 
-        <label for="taskDueDate">Due date</label>
-        <input id="taskDueDate" type="date" required />
+          <div class="form-group">
+            <label for="taskDueDate">Due date <span class="required-mark">*</span></label>
+            <input id="taskDueDate" type="date" required />
+            <span class="field-error" id="taskDueDateError" aria-live="polite"></span>
+          </div>
+        </div>
 
         <div class="dialog-actions">
           <button class="btn" id="cancelTaskBtn" type="button">Cancel</button>
-          <button class="btn btn-primary" type="submit">Save Task</button>
+          <button class="btn btn-primary" id="saveTaskBtn" type="submit">
+            <span class="btn-text">Save Task</span>
+            <span class="btn-spinner" hidden>Saving...</span>
+          </button>
         </div>
       </form>
     </dialog>
 
-    <!-- Phase 3 Add Topic Modal -->
-    <dialog class="task-dialog" id="topicDialog">
-      <form id="topicForm">
-        <h2>Add Study Topic & Notes</h2>
+    <!-- Phase 3 & 7 Add Topic Modal Dialog -->
+    <dialog class="task-dialog" id="topicDialog" aria-labelledby="topicDialogTitle" role="dialog">
+      <form id="topicForm" novalidate>
+        <div class="dialog-header">
+          <h2 id="topicDialogTitle">Add Study Topic & Notes</h2>
+          <button class="dialog-close-btn" id="closeTopicDialogBtn" type="button" aria-label="Close topic dialog">✕</button>
+        </div>
 
-        <label for="newTopicTitle">Topic Title</label>
-        <input
-          id="newTopicTitle"
-          type="text"
-          required
-          maxlength="100"
-          placeholder="e.g. Krebs Cycle & Cellular Respiration"
-        />
+        <div class="form-group">
+          <label for="newTopicTitle">Topic Title <span class="required-mark">*</span></label>
+          <input
+            id="newTopicTitle"
+            type="text"
+            required
+            maxlength="100"
+            placeholder="e.g. Krebs Cycle & Cellular Respiration"
+            autocomplete="off"
+          />
+          <span class="field-error" id="topicTitleError" aria-live="polite"></span>
+        </div>
 
-        <label for="newTopicSubject">Subject / Category</label>
-        <input
-          id="newTopicSubject"
-          type="text"
-          required
-          maxlength="50"
-          placeholder="e.g. Biology, Physics, Computer Science"
-        />
+        <div class="form-group">
+          <label for="newTopicSubject">Subject / Category <span class="required-mark">*</span></label>
+          <input
+            id="newTopicSubject"
+            type="text"
+            required
+            maxlength="50"
+            placeholder="e.g. Biology, Physics, Computer Science"
+            autocomplete="off"
+          />
+          <span class="field-error" id="topicSubjectError" aria-live="polite"></span>
+        </div>
 
-        <label for="newTopicQuestion">Recall Prompt / Question</label>
-        <input
-          id="newTopicQuestion"
-          type="text"
-          required
-          maxlength="150"
-          placeholder="e.g. Explain the main stages of cellular respiration and ATP generation."
-        />
+        <div class="form-group">
+          <label for="newTopicQuestion">Recall Prompt / Question</label>
+          <input
+            id="newTopicQuestion"
+            type="text"
+            maxlength="150"
+            placeholder="e.g. Explain the main stages of cellular respiration and ATP generation."
+            autocomplete="off"
+          />
+        </div>
 
-        <label for="newTopicNotes">Original Study Notes (Source Content)</label>
-        <textarea
-          id="newTopicNotes"
-          required
-          rows="5"
-          placeholder="Paste or write your detailed study notes, key terms, definitions, and facts here..."
-        ></textarea>
+        <div class="form-group">
+          <label for="newTopicNotes">Original Study Notes (Source Reference) <span class="required-mark">*</span></label>
+          <textarea
+            id="newTopicNotes"
+            required
+            rows="5"
+            placeholder="Write your study notes, definitions, formulas, and facts here. These will be hidden during recall tests."
+          ></textarea>
+          <span class="field-error" id="topicNotesError" aria-live="polite"></span>
+        </div>
 
         <div class="dialog-actions">
           <button class="btn" id="cancelTopicBtn" type="button">Cancel</button>
-          <button class="btn btn-primary" type="submit">Save Topic</button>
+          <button class="btn btn-primary" id="saveTopicBtn" type="submit">
+            <span class="btn-text">Save Topic</span>
+            <span class="btn-spinner" hidden>Saving...</span>
+          </button>
         </div>
       </form>
     </dialog>
 
-    <!-- Phase 6 Authentication Dialog (Modal for Login / Registration) -->
-    <dialog class="auth-dialog" id="authDialog">
+    <!-- Custom Accessible Confirmation Dialog (Phase 7 Confirmation UX) -->
+    <dialog class="confirm-dialog" id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage" role="alertdialog">
+      <div class="confirm-card">
+        <div class="confirm-icon-wrap" id="confirmIconWrap">
+          <span class="confirm-icon" aria-hidden="true">⚠️</span>
+        </div>
+        <div class="confirm-content">
+          <h3 class="confirm-title" id="confirmTitle">Confirm Action</h3>
+          <p class="confirm-message" id="confirmMessage">Are you sure you want to proceed?</p>
+        </div>
+        <div class="confirm-actions">
+          <button class="btn" id="cancelConfirmBtn" type="button">Cancel</button>
+          <button class="btn btn-danger" id="proceedConfirmBtn" type="button">Confirm</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Phase 6 & 7 Authentication Dialog (Modal for Login / Registration) -->
+    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authDialogTitle" role="dialog">
       <div class="auth-card">
         <div class="auth-header">
           <div class="auth-brand">
-            <span class="auth-logo-icon">⚡</span>
-            <h2>StudyPulse</h2>
+            <span class="auth-logo-icon" aria-hidden="true">⚡</span>
+            <h2 id="authDialogTitle">StudyPulse</h2>
           </div>
           <p class="auth-subtitle">Secure Student Productivity & Spaced Recall</p>
         </div>
 
-        <div class="auth-tabs">
-          <button class="auth-tab is-active" id="tabSignInBtn" type="button">Sign In</button>
-          <button class="auth-tab" id="tabSignUpBtn" type="button">Create Account</button>
+        <div class="auth-tabs" role="tablist">
+          <button class="auth-tab is-active" id="tabSignInBtn" type="button" role="tab" aria-selected="true">Sign In</button>
+          <button class="auth-tab" id="tabSignUpBtn" type="button" role="tab" aria-selected="false">Create Account</button>
         </div>
 
         <!-- Sign In Form -->
-        <form id="signInForm" class="auth-form">
+        <form id="signInForm" class="auth-form" novalidate>
           <div class="auth-input-group">
             <label for="loginEmail">Email address</label>
             <input id="loginEmail" type="email" required placeholder="student@university.edu" autocomplete="email" />
+            <span class="field-error" id="loginEmailError" aria-live="polite"></span>
           </div>
 
           <div class="auth-input-group">
             <label for="loginPassword">Password</label>
             <input id="loginPassword" type="password" required placeholder="••••••••" autocomplete="current-password" />
+            <span class="field-error" id="loginPasswordError" aria-live="polite"></span>
           </div>
 
-          <div class="auth-alert" id="loginAlert" hidden></div>
+          <div class="auth-alert" id="loginAlert" role="alert" hidden></div>
 
           <button type="submit" class="btn btn-primary auth-submit-btn" id="loginSubmitBtn">
             <span class="btn-text">Sign In →</span>
+            <span class="btn-spinner" hidden>Signing In...</span>
           </button>
         </form>
 
         <!-- Create Account Form -->
-        <form id="signUpForm" class="auth-form" hidden>
+        <form id="signUpForm" class="auth-form" novalidate hidden>
           <div class="auth-input-group">
             <label for="regName">Full Name</label>
             <input id="regName" type="text" required placeholder="e.g. Deeksha Sharma" autocomplete="name" />
+            <span class="field-error" id="regNameError" aria-live="polite"></span>
           </div>
 
           <div class="auth-input-group">
             <label for="regEmail">Email address</label>
             <input id="regEmail" type="email" required placeholder="name@domain.com" autocomplete="email" />
+            <span class="field-error" id="regEmailError" aria-live="polite"></span>
           </div>
 
           <div class="auth-input-group">
             <label for="regPassword">Password (min. 6 characters)</label>
             <input id="regPassword" type="password" required minlength="6" placeholder="••••••••" autocomplete="new-password" />
+            <span class="field-error" id="regPasswordError" aria-live="polite"></span>
           </div>
 
-          <div class="auth-alert" id="regAlert" hidden></div>
+          <div class="auth-alert" id="regAlert" role="alert" hidden></div>
 
           <button type="submit" class="btn btn-primary auth-submit-btn" id="regSubmitBtn">
             <span class="btn-text">Create Account →</span>
+            <span class="btn-spinner" hidden>Creating Account...</span>
           </button>
         </form>
       </div>
@@ -796,3 +936,4 @@
     <script src="script.js"></script>
   </body>
 </html>
+

@@ -68,13 +68,13 @@ router.post("/auth/login", (req, res) => {
 router.post("/auth/logout", (req, res) => {
   try {
     if (!req.token) {
-      return res.status(401).json({ error: "Authentication required to log out." });
+      return res.status(401).json({ success: false, error: "Authentication required to log out." });
     }
     auth.deleteSession(req.token, db.getDatabase());
     res.json({ success: true, message: "Logged out successfully." });
   } catch (err) {
     console.error("Logout error:", err);
-    res.status(500).json({ error: "Failed to log out." });
+    res.status(500).json({ success: false, error: "Failed to log out." });
   }
 });
 
@@ -84,7 +84,7 @@ router.post("/auth/logout", (req, res) => {
  */
 router.get("/auth/me", (req, res) => {
   if (!req.token || !req.user || req.user.id === "demo-user-1" && !req.headers["authorization"] && !req.headers["x-auth-token"]) {
-    return res.status(401).json({ error: "Authentication required. Please log in." });
+    return res.status(401).json({ success: false, error: "Authentication required. Please log in." });
   }
   res.json({
     success: true,
@@ -106,7 +106,7 @@ router.get("/tasks", (req, res) => {
     res.json({ success: true, count: tasks.length, data: tasks });
   } catch (err) {
     console.error("Error fetching user tasks:", err);
-    res.status(500).json({ error: "Failed to retrieve tasks." });
+    res.status(500).json({ success: false, error: "Failed to retrieve tasks." });
   }
 });
 
@@ -118,7 +118,7 @@ router.post("/tasks", (req, res) => {
   try {
     const { title, description, priority, dueDate, due_date } = req.body || {};
     if (!title || typeof title !== "string" || !title.trim()) {
-      return res.status(400).json({ error: "Task title is required." });
+      return res.status(400).json({ success: false, error: "Task title is required." });
     }
 
     const newTask = db.createTask({
@@ -131,7 +131,7 @@ router.post("/tasks", (req, res) => {
     res.status(201).json({ success: true, data: newTask });
   } catch (err) {
     console.error("Error creating task:", err);
-    res.status(500).json({ error: "Failed to create task." });
+    res.status(500).json({ success: false, error: "Failed to create task." });
   }
 });
 
@@ -145,13 +145,13 @@ router.put("/tasks/:id", (req, res) => {
     const updated = db.updateTask(taskId, req.body || {}, req.userId);
 
     if (!updated) {
-      return res.status(404).json({ error: `Task not found or unauthorized.` });
+      return res.status(404).json({ success: false, error: `Task not found or unauthorized.` });
     }
 
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error("Error updating task:", err);
-    res.status(500).json({ error: "Failed to update task." });
+    res.status(500).json({ success: false, error: "Failed to update task." });
   }
 });
 
@@ -165,13 +165,13 @@ router.delete("/tasks/:id", (req, res) => {
     const deleted = db.deleteTask(taskId, req.userId);
 
     if (!deleted) {
-      return res.status(404).json({ error: `Task not found or unauthorized.` });
+      return res.status(404).json({ success: false, error: `Task not found or unauthorized.` });
     }
 
     res.json({ success: true, message: "Task deleted." });
   } catch (err) {
     console.error("Error deleting task:", err);
-    res.status(500).json({ error: "Failed to delete task." });
+    res.status(500).json({ success: false, error: "Failed to delete task." });
   }
 });
 
@@ -189,7 +189,7 @@ router.get("/topics", (req, res) => {
     res.json({ success: true, count: topics.length, data: topics });
   } catch (err) {
     console.error("Error fetching topics:", err);
-    res.status(500).json({ error: "Failed to retrieve study topics." });
+    res.status(500).json({ success: false, error: "Failed to retrieve study topics." });
   }
 });
 
@@ -201,12 +201,12 @@ router.get("/topics/:id", (req, res) => {
   try {
     const topic = db.getTopicById(req.params.id, db.getDatabase(), req.userId);
     if (!topic) {
-      return res.status(404).json({ error: `Topic not found with ID '${req.params.id}'` });
+      return res.status(404).json({ success: false, error: `Topic not found with ID '${req.params.id}'` });
     }
     res.json({ success: true, data: topic });
   } catch (err) {
     console.error("Error fetching topic:", err);
-    res.status(500).json({ error: "Failed to retrieve topic details." });
+    res.status(500).json({ success: false, error: "Failed to retrieve topic details." });
   }
 });
 
@@ -219,10 +219,10 @@ router.post("/topics", (req, res) => {
     const { title, subject, question, notes, key_concepts } = req.body || {};
 
     if (!title || typeof title !== "string" || !title.trim()) {
-      return res.status(400).json({ error: "Topic title is required." });
+      return res.status(400).json({ success: false, error: "Topic title is required." });
     }
     if (!notes || typeof notes !== "string" || !notes.trim()) {
-      return res.status(400).json({ error: "Topic notes/content are required." });
+      return res.status(400).json({ success: false, error: "Topic notes/content are required." });
     }
 
     const newTopic = db.createTopic({
@@ -236,9 +236,30 @@ router.post("/topics", (req, res) => {
     res.status(201).json({ success: true, data: newTopic });
   } catch (err) {
     console.error("Error creating topic:", err);
-    res.status(500).json({ error: "Failed to create study topic." });
+    res.status(500).json({ success: false, error: "Failed to create study topic." });
   }
 });
+
+/**
+ * DELETE /api/topics/:id
+ * Delete a custom topic owned by current user.
+ */
+router.delete("/topics/:id", (req, res) => {
+  try {
+    const topicId = req.params.id;
+    const deleted = db.deleteTopic(topicId, req.userId);
+
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: "Topic not found or cannot be deleted." });
+    }
+
+    res.json({ success: true, message: "Topic deleted." });
+  } catch (err) {
+    console.error("Error deleting topic:", err);
+    res.status(500).json({ success: false, error: "Failed to delete topic." });
+  }
+});
+
 
 /**
  * POST /api/recall/evaluate
@@ -251,17 +272,18 @@ router.post("/recall/evaluate", async (req, res) => {
 
     // 1. Validation: topic_id
     if (!topic_id || typeof topic_id !== "string" || !topic_id.trim()) {
-      return res.status(400).json({ error: "topic_id is required." });
+      return res.status(400).json({ success: false, error: "topic_id is required." });
     }
 
     // 2. Validation: student_answer
     if (typeof student_answer !== "string" || student_answer.trim().length === 0) {
-      return res.status(400).json({ error: "Student answer cannot be empty." });
+      return res.status(400).json({ success: false, error: "Student answer cannot be empty." });
     }
 
     const trimmedAnswer = student_answer.trim();
     if (trimmedAnswer.length < 8) {
       return res.status(400).json({ 
+        success: false,
         error: "Student answer is too short. Please write a complete explanation of what you recall." 
       });
     }
@@ -269,7 +291,7 @@ router.post("/recall/evaluate", async (req, res) => {
     // 3. Find topic in database (must be accessible to user)
     const topic = db.getTopicById(topic_id.trim(), db.getDatabase(), req.userId);
     if (!topic) {
-      return res.status(404).json({ error: `Topic not found with ID '${topic_id}'.` });
+      return res.status(404).json({ success: false, error: `Topic not found with ID '${topic_id}'.` });
     }
 
     // 4. Perform Recall Evaluation

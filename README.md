@@ -1,6 +1,6 @@
 # StudyPulse — Multi-User Student Productivity, AI Active Recall & Personalized Analytics
 
-StudyPulse is a comprehensive multi-user student learning and productivity system combining active task management, AI-powered active recall evaluation, automated spaced repetition revision scheduling, personalized learning analytics, and secure multi-user data isolation.
+StudyPulse is a comprehensive, production-ready multi-user student learning and productivity system combining active task management, AI-powered active recall evaluation, automated spaced repetition revision scheduling, personalized learning analytics, secure multi-user data isolation, and responsive UX across desktop, tablet, and mobile.
 
 ---
 
@@ -8,12 +8,12 @@ StudyPulse is a comprehensive multi-user student learning and productivity syste
 
 ### Phase 1 & 2: Productivity Dashboard & Task Management
 - **Dashboard Overview**: Key performance indicators (Total Tasks, Completed, Pending, Focus Streak).
-- **Task Management**: Create, edit, prioritize (Low, Medium, High), set due dates, mark as completed, and delete tasks.
+- **Task Management**: Create, edit, prioritize (Low, Medium, High), set due dates, mark as completed, and delete tasks with confirmation dialogs.
 - **Weekly Study Progress**: Visual subject-by-subject study hours tracking.
 - **Upcoming Deadlines**: Real-time due date tracking (Due today, Overdue, Due tomorrow, etc.).
 
 ### Phase 3: AI-Powered Active Recall Practice & Evaluation
-- **Curriculum Topics**: Built-in topics across Biology, Physics, and Computer Science + support for custom topics.
+- **Curriculum Topics**: Built-in topics across Biology, Physics, and Computer Science + support for custom user topics.
 - **Active Recall Mode**: **Strictly hides study notes** while recalling from memory. Includes live elapsed timer and character/word counters.
 - **Evaluation Engine**: Analyzes recalled answer against source material and key concepts.
   - **Score**: 0–100%
@@ -50,6 +50,26 @@ StudyPulse is a comprehensive multi-user student learning and productivity syste
 - **Token-Based Sessions**: Secure session tokens with 7-day expiration and instant invalidation on logout.
 - **Uniform Error Handling**: Safe authentication error messages prevent user enumeration. Passwords and hashes are never exposed in API responses.
 
+### Phase 7: Production Polish & Responsive UX
+- **Cross-Device Responsive Design**:
+  - **Desktop / Laptop**: Two-column layout with fixed/sticky sidebar, expansive KPI cards, and side-by-side analytics panels.
+  - **Tablet (<= 992px)**: Two-column grid collapses gracefully.
+  - **Mobile (<= 768px)**: Sliding off-canvas sidebar drawer with backdrop overlay, accessible hamburger menu toggle, minimum 44px touch targets, and fluid single-column collapse.
+- **Light & Dark Theme Modes**:
+  - Full design-token-driven theming supporting **Light**, **Dark**, and **System OS preference** with seamless switching and persistent local storage.
+- **Accessibility & WCAG Compliance**:
+  - Semantic HTML5, accessible skip link (`.skip-link`), ARIA landmark roles, accessible live regions (`aria-live="polite"`), high contrast color ratios, and high-visibility focus indicator rings (`:focus-visible`).
+  - Motion sensitivity support via `@media (prefers-reduced-motion: reduce)`.
+- **Toast Notifications System**:
+  - Floating non-intrusive notification toasts for task changes, recall evaluations, revision completions, theme switches, and error feedback.
+- **Accessible Custom Confirmation Dialog**:
+  - Replaces all native `confirm()` prompts with keyboard-trapped, styled `<dialog>` modals with safe destruction warnings.
+- **Inline Validation & Loading States**:
+  - Real-time client-side form validation with inline error messages for email, password, tasks, topics, and recall word count.
+  - Button loading spinners and shimmering skeleton card loaders for smooth asynchronous transitions.
+- **Topic Deletion**:
+  - Authenticated custom topic deletion (`DELETE /api/topics/:id`) with cascade cleanup of associated revisions and recall attempts.
+
 ---
 
 ## 📐 Analytics Formulas & Classifications
@@ -85,13 +105,13 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 - `POST /api/auth/logout` — Invalidate the current session token.
 - `GET /api/auth/me` — Retrieve current authenticated user profile.
 
-### Tasks Management (Phase 6)
+### Tasks Management (Phase 6 & 7)
 - `GET /api/tasks` — List tasks owned by the authenticated user.
 - `POST /api/tasks` — Create a new task.
 - `PUT /api/tasks/:id` — Update a task (title, description, priority, due date, completion).
 - `DELETE /api/tasks/:id` — Delete a user task.
 
-### Learning Analytics (Phase 5)
+### Learning Analytics (Phase 5 & 7)
 - `GET /api/analytics/overview` — High-level learning analytics, overall learning score, mastery counts, and top 5 strongest/weakest topics.
 - `GET /api/analytics/recall-trend` — Chronological daily recall performance (attempts, average, max, min scores).
 - `GET /api/analytics/topics` — Complete topic mastery matrix with latest scores, average scores, and revision counts.
@@ -99,16 +119,17 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 - `GET /api/analytics/revisions` — Spaced repetition analytics, urgency breakdown, and daily completion history.
 - `GET /api/analytics/insights` — Personalized deterministic insights derived from database metrics.
 
-### Spaced Repetition & Revisions (Phase 4)
+### Spaced Repetition & Revisions (Phase 4 & 7)
 - `GET /api/revisions` — Get all active revision schedules for the user (`?status=pending|completed|all`).
 - `GET /api/revisions/due` — Get revisions due today or overdue.
 - `POST /api/revisions/:id/complete` — Mark a revision as completed.
 - `GET /api/revisions/:topicId` — Get revision history for a specific topic.
 
-### Active Recall & Topics (Phase 1–3)
+### Active Recall & Topics (Phase 1–3, 7)
 - `GET /api/topics` — List system topics and user's private topics.
 - `GET /api/topics/:id` — Retrieve topic details and notes.
 - `POST /api/topics` — Create a new study topic.
+- `DELETE /api/topics/:id` — Delete a custom topic created by the current user.
 - `POST /api/recall/evaluate` — Submit recalled answer for evaluation and automatic revision scheduling.
 - `GET /api/recall/history` — Get past recall attempts history for the user.
 - `GET /api/stats` — Summary metrics for dashboard KPI compatibility.
@@ -117,13 +138,13 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 
 ## 🧪 Testing
 
-To run the complete automated test suite (57 tests across all 6 phases):
+To run the complete automated test suite (69 tests across all 7 phases):
 
 ```bash
 npm test
 ```
 
-All 57 tests execute in ~1 second using Node.js native test runner (`node:test`).
+All 69 tests execute in ~1 second using Node.js native test runner (`node:test`).
 
 ---
 
@@ -142,5 +163,7 @@ All 57 tests execute in ~1 second using Node.js native test runner (`node:test`)
 3. **Open the web dashboard**:
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
    - If not signed in, create a new account or sign in.
-   - Try creating tasks and completing recall sessions.
-   - Register a second account in an incognito window to verify user data isolation.
+   - Test the dark/light mode toggle in the top navigation or settings.
+   - Try creating tasks, custom study topics, and completing recall sessions.
+   - Check the Spaced Repetition queue and Learning Analytics dashboard.
+   - Switch to mobile viewport mode to test the responsive navigation drawer and touch UI.

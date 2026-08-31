@@ -1,0 +1,25 @@
+{
+  "name": "student-productivity-dashboard",
+  "version": "1.0.0",
+  "description": "Student Productivity Dashboard & AI-Powered Recall Evaluation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "keywords": [
+    "study",
+    "dashboard",
+    "recall",
+    "ai",
+    "evaluation"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1"
+  }
+}

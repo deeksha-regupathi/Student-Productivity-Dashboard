@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Productivity Dashboard & AI Recall</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Left sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-mark" aria-hidden="true">SP</span>
+          <div>
+            <p class="brand-name">StudyPulse</p>
+            <p class="brand-tagline">Stay focused</p>
+          </div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="Main">
+          <a class="nav-link is-active" href="#dashboard" data-view="dashboard">
+            <span class="nav-icon" aria-hidden="true">▦</span>
+            Dashboard
+          </a>
+          <a class="nav-link" href="#recall" data-view="recall">
+            <span class="nav-icon" aria-hidden="true">🧠</span>
+            Active Recall
+          </a>
+          <a class="nav-link" href="#tasks" data-view="tasks">
+            <span class="nav-icon" aria-hidden="true">☑</span>
+            Tasks
+          </a>
+          <a class="nav-link" href="#subjects" data-view="subjects">
+            <span class="nav-icon" aria-hidden="true">▤</span>
+            Subjects & Notes
+          </a>
+          <a class="nav-link" href="#progress" data-view="progress">
+            <span class="nav-icon" aria-hidden="true">◉</span>
+            Recall Progress
+          </a>
+          <a class="nav-link" href="#settings" data-view="settings">
+            <span class="nav-icon" aria-hidden="true">⚙</span>
+            Settings
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <p class="sidebar-tip-label">Today's focus</p>
+          <p class="sidebar-tip" id="sidebarTip">Add a task to set today's focus.</p>
+        </div>
+      </aside>
+
+      <div class="content">
+        <!-- Top header -->
+        <header class="header">
+          <button
+            class="menu-btn"
+            id="menuBtn"
+            type="button"
+            aria-label="Open navigation"
+          >
+            ☰
+          </button>
+
+          <div class="header-search">
+            <label class="sr-only" for="searchInput">Search</label>
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Search tasks, subjects, or notes..."
+            />
+          </div>
+
+          <div class="header-right">
+            <p class="header-date" id="currentDate">Loading date...</p>
+            <div class="user-chip">
+              <span class="user-avatar" aria-hidden="true">D</span>
+              <div>
+                <p class="user-name">Deeksha</p>
+                <p class="user-role">Student</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main class="main">
+          <!-- ================= VIEW 1: DASHBOARD (Phase 1, 2 & 4) ================= -->
+          <div id="viewDashboard" class="view-pane">
+            <!-- Welcome section -->
+            <section class="welcome" aria-labelledby="welcomeHeading">
+              <div>
+                <p class="welcome-kicker">Good evening</p>
+                <h1 id="welcomeHeading">Welcome back, Deeksha</h1>
+                <p class="welcome-text" id="welcomeText">
+                  Add a task to start planning your day.
+                </p>
+              </div>
+              <div class="welcome-badge">
+                <p class="welcome-badge-label">Focus streak</p>
+                <p class="welcome-badge-value">6 days</p>
+              </div>
+            </section>
+
+            <!-- KPI cards -->
+            <section class="kpi-grid" aria-label="Key stats">
+              <article class="kpi-card">
+                <p class="kpi-label">Total Tasks</p>
+                <p class="kpi-value" id="kpiTotal">0</p>
+                <p class="kpi-meta">Saved in this browser</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Tasks Completed</p>
+                <p class="kpi-value" id="kpiCompleted">0</p>
+                <p class="kpi-meta">Marked as done</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Pending Tasks</p>
+                <p class="kpi-value" id="kpiPending">0</p>
+                <p class="kpi-meta">Still to finish</p>
+              </article>
+              <article class="kpi-card">
+                <p class="kpi-label">Study Hours</p>
+                <p class="kpi-value">12.5</p>
+                <p class="kpi-meta">This week</p>
+              </article>
+            </section>
+
+            <!-- Phase 4: Smart Revision Queue (Spaced Repetition) -->
+            <section class="panel revision-queue-panel" id="revisionQueueSection">
+              <div class="panel-header">
+                <div>
+                  <span class="view-kicker">Spaced Repetition</span>
+                  <h2>Smart Revision Queue</h2>
+                </div>
+                <div class="revision-filter-tabs">
+                  <button class="filter-tab is-active" data-filter="all" id="filterRevAll">All (<span id="revCountAll">0</span>)</button>
+                  <button class="filter-tab tab-overdue" data-filter="overdue" id="filterRevOverdue">Overdue (<span id="revCountOverdue">0</span>)</button>
+                  <button class="filter-tab tab-due-today" data-filter="due_today" id="filterRevDueToday">Due Today (<span id="revCountDueToday">0</span>)</button>
+                  <button class="filter-tab tab-upcoming" data-filter="upcoming" id="filterRevUpcoming">Upcoming (<span id="revCountUpcoming">0</span>)</button>
+                </div>
+              </div>
+              <div class="revision-queue-grid" id="revisionQueueList">
+                <p class="empty-note">Loading scheduled revisions...</p>
+              </div>
+            </section>
+
+            <div class="dashboard-grid">
+              <!-- Today's Tasks -->
+              <section class="panel" aria-labelledby="tasksHeading">
+                <div class="panel-header">
+                  <h2 id="tasksHeading">Today's Tasks</h2>
+                  <div class="panel-actions">
+                    <span class="panel-count" id="taskCount">0 tasks</span>
+                    <button class="btn btn-primary" id="addTaskBtn" type="button">
+                      Add Task
+                    </button>
+                  </div>
+                </div>
+                <ul class="task-list" id="taskList"></ul>
+              </section>
+
+              <!-- Weekly Study Progress -->
+              <section class="panel" aria-labelledby="progressHeading">
+                <div class="panel-header">
+                  <h2 id="progressHeading">Weekly Study Progress</h2>
+                  <span class="panel-count">12.5 / 15 hrs</span>
+                </div>
+                <ul class="progress-list">
+                  <li class="progress-item">
+                    <div class="progress-row">
+                      <span>Mathematics</span>
+                      <span>3.5 hrs</span>
+                    </div>
+                    <div class="progress-bar" aria-hidden="true">
+                      <span class="progress-fill" style="width: 70%"></span>
+                    </div>
+                  </li>
+                  <li class="progress-item">
+                    <div class="progress-row">
+                      <span>Physics</span>
+                      <span>2.5 hrs</span>
+                    </div>
+                    <div class="progress-bar" aria-hidden="true">
+                      <span class="progress-fill" style="width: 50%"></span>
+                    </div>
+                  </li>
+                  <li class="progress-item">
+                    <div class="progress-row">
+                      <span>English</span>
+                      <span>2 hrs</span>
+                    </div>
+                    <div class="progress-bar" aria-hidden="true">
+                      <span class="progress-fill" style="width: 40%"></span>
+                    </div>
+                  </li>
+                  <li class="progress-item">
+                    <div class="progress-row">
+                      <span>History</span>
+                      <span>2.5 hrs</span>
+                    </div>
+                    <div class="progress-bar" aria-hidden="true">
+                      <span class="progress-fill" style="width: 55%"></span>
+                    </div>
+                  </li>
+                  <li class="progress-item">
+                    <div class="progress-row">
+                      <span>Computer Science</span>
+                      <span>2 hrs</span>
+                    </div>
+                    <div class="progress-bar" aria-hidden="true">
+                      <span class="progress-fill" style="width: 45%"></span>
+                    </div>
+                  </li>
+                </ul>
+              </section>
+            </div>
+
+            <!-- Upcoming Deadlines -->
+            <section class="panel" aria-labelledby="deadlinesHeading">
+              <div class="panel-header">
+                <h2 id="deadlinesHeading">Upcoming Deadlines</h2>
+                <span class="panel-count" id="deadlineCount">0 upcoming</span>
+              </div>
+              <ul class="deadline-list" id="deadlineList"></ul>
+            </section>
+          </div>
+
+          <!-- ================= VIEW 2: ACTIVE RECALL SESSION (Phase 3 & 4) ================= -->
+          <div id="viewRecall" class="view-pane" hidden>
+            <!-- Topic Selection Bar -->
+            <section class="panel recall-select-panel">
+              <div class="recall-header-row">
+                <div>
+                  <span class="view-kicker">Active Recall Practice</span>
+                  <h2 class="view-title">Test Your Memory & Understanding</h2>
+                  <p class="view-subtitle">Select a topic, review notes, then recall the concepts from memory without peeking.</p>
+                </div>
+                <div class="topic-picker-group">
+                  <label for="topicSelect" class="sr-only">Choose Topic</label>
+                  <select id="topicSelect" class="topic-select-dropdown">
+                    <option value="">Loading topics...</option>
+                  </select>
+                  <button class="btn btn-primary" id="openNewTopicModalBtn" type="button">+ New Topic</button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Topic Overview & Pre-Recall Prep Mode -->
+            <section class="panel" id="recallPrepCard">
+              <div class="topic-overview-header">
+                <div class="topic-tag-row">
+                  <span class="subject-badge" id="prepSubjectBadge">Biology</span>
+                  <span class="topic-concept-count" id="prepConceptCount">5 Core Concepts</span>
+                </div>
+                <h3 class="topic-display-title" id="prepTopicTitle">Cellular Respiration & Mitochondria</h3>
+                <div class="question-callout">
+                  <p class="question-callout-label">🎯 Recall Prompt Question:</p>
+                  <p class="question-callout-text" id="prepQuestionText">Explain the purpose of cellular respiration...</p>
+                </div>
+              </div>
+
+              <!-- Collapsible Notes for Study Mode (Will be HIDDEN during recall) -->
+              <div class="study-notes-section" id="prepNotesContainer">
+                <div class="notes-toggle-bar">
+                  <h4>📖 Original Study Notes & Reference</h4>
+                  <span class="notes-warning-tag">⚠️ Notes will be hidden once recall begins</span>
+                </div>
+                <div class="study-notes-content" id="prepNotesContent">
+                  <!-- Notes text rendered here -->
+                </div>
+              </div>
+
+              <div class="recall-start-cta">
+                <button class="btn btn-primary btn-large" id="startRecallBtn" type="button">
+                  🧠 I'm Ready — Start Recall Session
+                </button>
+              </div>
+            </section>
+
+            <!-- Active Recall Form Mode (Notes HIDDEN) -->
+            <section class="panel recall-active-card" id="recallActiveCard" hidden>
+              <div class="recall-active-header">
+                <div>
+                  <span class="active-badge">🔴 Recall in Progress (Notes Hidden)</span>
+                  <h3 class="topic-display-title" id="activeTopicTitle">Cellular Respiration & Mitochondria</h3>
+                  <div class="question-box">
+                    <p class="question-box-label">Question:</p>
+                    <p class="question-box-text" id="activeQuestionText"></p>
+                  </div>
+                </div>
+                <div class="timer-box" id="recallTimerBox">
+                  <span class="timer-label">Time Elapsed</span>
+                  <span class="timer-value" id="recallTimerDisplay">00:00</span>
+                </div>
+              </div>
+
+              <form id="recallForm" class="recall-form">
+                <div class="textarea-header">
+                  <label for="studentAnswerInput" class="textarea-label">
+                    Write down everything you remember about this topic from memory:
+                  </label>
+                  <span class="word-count" id="recallWordCount">0 words (0 characters)</span>
+                </div>
+
+                <textarea
+                  id="studentAnswerInput"
+                  class="recall-textarea"
+                  rows="9"
+                  placeholder="Type your recalled explanation here... Mention definitions, stages, formulas, key terminology, and how the concepts connect."
+                  required
+                ></textarea>
+
+                <div class="recall-alert" id="recallAlert" hidden></div>
+
+                <div class="recall-form-actions">
+                  <button type="button" class="btn" id="cancelActiveRecallBtn">
+                    Cancel & Return to Notes
+                  </button>
+                  <button type="submit" class="btn btn-primary btn-large" id="submitRecallBtn">
+                    <span class="btn-text">⚡ Submit Recall for Evaluation</span>
+                    <span class="btn-spinner" hidden>⏳ Evaluating...</span>
+                  </button>
+                </div>
+              </form>
+            </section>
+
+            <!-- Evaluation Results Card -->
+            <section class="panel recall-result-card" id="recallResultCard" hidden>
+              <div class="result-header">
+                <div class="result-score-block">
+                  <div class="score-donut" id="resultScoreDonut">
+                    <span class="score-number" id="resultScoreVal">--</span>
+                    <span class="score-denom">/ 100</span>
+                  </div>
+                  <div>
+                    <span class="level-pill" id="resultLevelPill">Evaluating</span>
+                    <h3 class="result-title" id="resultTopicTitle">Recall Evaluation Result</h3>
+                    <p class="result-date" id="resultDate">Just now</p>
+                  </div>
+                </div>
+                <div class="result-quick-actions">
+                  <button class="btn btn-primary" id="retryRecallBtn" type="button">🔄 Retake Recall</button>
+                  <button class="btn" id="toggleNotesCompareBtn" type="button">📖 View Original Notes</button>
+                </div>
+              </div>
+
+              <!-- Phase 4: Spaced Repetition Next Revision Banner -->
+              <div class="next-revision-banner" id="nextRevisionBanner">
+                <div class="next-revision-info">
+                  <span class="next-revision-icon">📅</span>
+                  <div>
+                    <p class="next-revision-label">Spaced Repetition Schedule</p>
+                    <p class="next-revision-text" id="resultNextRevisionText">Next revision: Calculating...</p>
+                  </div>
+                </div>
+                <button class="btn btn-small" id="viewRevisionScheduleBtn" type="button">View Revision Queue →</button>
+              </div>
+
+              <!-- Feedback Summary -->
+              <div class="feedback-card">
+                <h4 class="feedback-heading">💬 AI Feedback</h4>
+                <p class="feedback-text" id="resultFeedbackText">Feedback summary will appear here.</p>
+              </div>
+
+              <!-- Concept Breakdown Grid -->
+              <div class="concepts-grid">
+                <!-- Correct Concepts -->
+                <div class="concept-column column-correct">
+                  <div class="concept-col-header">
+                    <span class="col-icon">✅</span>
+                    <h4>Correctly Recalled (<span id="correctCount">0</span>)</h4>
+                  </div>
+                  <ul class="concept-pill-list" id="correctConceptsList"></ul>
+                </div>
+
+                <!-- Partial Concepts -->
+                <div class="concept-column column-partial">
+                  <div class="concept-col-header">
+                    <span class="col-icon">⚠️</span>
+                    <h4>Partially Recalled (<span id="partialCount">0</span>)</h4>
+                  </div>
+                  <ul class="concept-pill-list" id="partialConceptsList"></ul>
+                </div>
+
+                <!-- Missed Concepts -->
+                <div class="concept-column column-missed">
+                  <div class="concept-col-header">
+                    <span class="col-icon">❌</span>
+                    <h4>Missed Concepts (<span id="missedCount">0</span>)</h4>
+                  </div>
+                  <ul class="concept-pill-list" id="missedConceptsList"></ul>
+                </div>
+              </div>
+
+              <!-- Suggestions Card -->
+              <div class="suggestions-card">
+                <h4 class="suggestions-heading">💡 Actionable Improvement Suggestions</h4>
+                <ul class="suggestions-list" id="suggestionsList"></ul>
+              </div>
+
+              <!-- Revealed Notes Box (Toggled) -->
+              <div class="revealed-notes-box" id="revealedNotesBox" hidden>
+                <h4>Original Notes Reference:</h4>
+                <div class="revealed-notes-text" id="revealedNotesText"></div>
+              </div>
+
+              <!-- Past Attempts on this Topic -->
+              <div class="topic-history-section">
+                <h4>📜 Past Recall Attempts on this Topic</h4>
+                <div class="history-table-container">
+                  <table class="history-table" id="topicHistoryTable">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>Score</th>
+                        <th>Level</th>
+                        <th>Correct / Missed</th>
+                        <th>Feedback Preview</th>
+                      </tr>
+                    </thead>
+                    <tbody id="topicHistoryTbody">
+                      <tr><td colspan="5" class="empty-note">No past attempts yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ================= VIEW 3: SUBJECTS & NOTES ================= -->
+          <div id="viewSubjects" class="view-pane" hidden>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="view-kicker">Study Material</span>
+                  <h2>Subjects & Reference Topics</h2>
+                </div>
+                <button class="btn btn-primary" id="openAddTopicBtn" type="button">+ Add Subject Topic</button>
+              </div>
+              <div class="topics-cards-grid" id="topicsGrid">
+                <!-- Dynamically rendered topic cards -->
+              </div>
+            </section>
+          </div>
+
+          <!-- ================= VIEW 4: RECALL PROGRESS & STATS (Phase 3 & 4) ================= -->
+          <div id="viewProgress" class="view-pane" hidden>
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <span class="view-kicker">Analytics & Spaced Repetition</span>
+                  <h2>Active Recall & Revision Analytics</h2>
+                </div>
+              </div>
+              <div class="stats-overview-grid">
+                <div class="kpi-card">
+                  <p class="kpi-label">Total Recall Sessions</p>
+                  <p class="kpi-value" id="statsTotalAttempts">0</p>
+                  <p class="kpi-meta">All-time evaluations</p>
+                </div>
+                <div class="kpi-card">
+                  <p class="kpi-label">Average Recall Score</p>
+                  <p class="kpi-value" id="statsAvgScore">0%</p>
+                  <p class="kpi-meta">Accuracy rate</p>
+                </div>
+                <div class="kpi-card">
+                  <p class="kpi-label">Revisions Due / Overdue</p>
+                  <p class="kpi-value" id="statsDueRevisionsCount">0</p>
+                  <p class="kpi-meta">Require practice</p>
+                </div>
+                <div class="kpi-card">
+                  <p class="kpi-label">Completed Revisions</p>
+                  <p class="kpi-value" id="statsCompletedRevisionsCount">0</p>
+                  <p class="kpi-meta">Spaced repetition done</p>
+                </div>
+              </div>
+
+              <!-- Strongest & Weakest Topics Breakdown -->
+              <div class="topic-strength-grid" style="margin-top: 20px;">
+                <div class="strength-card strength-high">
+                  <h4>🏆 Strongest Topics (Mastery)</h4>
+                  <ul class="strength-list" id="strongestTopicsList">
+                    <li class="empty-note">Complete recalls to see mastery topics.</li>
+                  </ul>
+                </div>
+                <div class="strength-card strength-low">
+                  <h4>🎯 Weakest Topics (Needs Review)</h4>
+                  <ul class="strength-list" id="weakestTopicsList">
+                    <li class="empty-note">Complete recalls to see topics needing focus.</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Upcoming & Scheduled Revisions Table -->
+              <div class="all-history-section" style="margin-top: 24px;">
+                <h3>Upcoming & Due Revision Schedules</h3>
+                <div class="history-table-container">
+                  <table class="history-table" id="upcomingRevisionsTable">
+                    <thead>
+                      <tr>
+                        <th>Topic</th>
+                        <th>Subject</th>
+                        <th>Last Score</th>
+                        <th>Revision Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="upcomingRevisionsTbody">
+                      <tr><td colspan="6" class="empty-note">No active revision schedules.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Recent Evaluations History -->
+              <div class="all-history-section" style="margin-top: 24px;">
+                <h3>Recent Recall Evaluations</h3>
+                <div class="history-table-container">
+                  <table class="history-table" id="allHistoryTable">
+                    <thead>
+                      <tr>
+                        <th>Topic</th>
+                        <th>Subject</th>
+                        <th>Score</th>
+                        <th>Level</th>
+                        <th>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody id="allHistoryTbody">
+                      <tr><td colspan="5" class="empty-note">No evaluations recorded yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ================= VIEW 5: SETTINGS ================= -->
+          <div id="viewSettings" class="view-pane" hidden>
+            <section class="panel">
+              <div class="panel-header">
+                <h2>System & Recall Settings</h2>
+              </div>
+              <div class="settings-content">
+                <div class="settings-item">
+                  <div>
+                    <h4>AI Evaluation Engine</h4>
+                    <p class="settings-desc">StudyPulse automatically utilizes the built-in Concept-Matching Engine or connects to Google Gemini / OpenAI via environment variables.</p>
+                  </div>
+                  <span class="status-tag is-done">Active</span>
+                </div>
+                <div class="settings-item">
+                  <div>
+                    <h4>Spaced Repetition Algorithm</h4>
+                    <p class="settings-desc">
+                      • <strong>0–49% (Weak):</strong> Next revision in 1 day<br />
+                      • <strong>50–69% (Needs Improvement):</strong> Next revision in 2 days<br />
+                      • <strong>70–84% (Good):</strong> Next revision in 4 days<br />
+                      • <strong>85–100% (Excellent):</strong> Next revision in 7 days
+                    </p>
+                  </div>
+                  <span class="status-tag is-done">Enabled</span>
+                </div>
+                <div class="settings-item">
+                  <div>
+                    <h4>Database Storage</h4>
+                    <p class="settings-desc">Persistent local SQLite database storing topics, task states, recall attempts, and revision schedules.</p>
+                  </div>
+                  <span class="status-tag is-done">Connected</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay" hidden></div>
+
+    <!-- Phase 2 Task Modal -->
+    <dialog class="task-dialog" id="taskDialog">
+      <form id="taskForm">
+        <h2 id="dialogTitle">Add Task</h2>
+        <input type="hidden" id="taskId" />
+
+        <label for="taskTitle">Task title</label>
+        <input
+          id="taskTitle"
+          type="text"
+          required
+          maxlength="80"
+          placeholder="e.g. Revise Algebra notes"
+        />
+
+        <label for="taskDescription">Description</label>
+        <textarea
+          id="taskDescription"
+          required
+          rows="3"
+          maxlength="200"
+          placeholder="What do you need to do?"
+        ></textarea>
+
+        <label for="taskPriority">Priority</label>
+        <select id="taskPriority" required>
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <label for="taskDueDate">Due date</label>
+        <input id="taskDueDate" type="date" required />
+
+        <div class="dialog-actions">
+          <button class="btn" id="cancelTaskBtn" type="button">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save Task</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- Phase 3 Add Topic Modal -->
+    <dialog class="task-dialog" id="topicDialog">
+      <form id="topicForm">
+        <h2>Add Study Topic & Notes</h2>
+
+        <label for="newTopicTitle">Topic Title</label>
+        <input
+          id="newTopicTitle"
+          type="text"
+          required
+          maxlength="100"
+          placeholder="e.g. Krebs Cycle & Cellular Respiration"
+        />
+
+        <label for="newTopicSubject">Subject / Category</label>
+        <input
+          id="newTopicSubject"
+          type="text"
+          required
+          maxlength="50"
+          placeholder="e.g. Biology, Physics, Computer Science"
+        />
+
+        <label for="newTopicQuestion">Recall Prompt / Question</label>
+        <input
+          id="newTopicQuestion"
+          type="text"
+          required
+          maxlength="150"
+          placeholder="e.g. Explain the main stages of cellular respiration and ATP generation."
+        />
+
+        <label for="newTopicNotes">Original Study Notes (Source Content)</label>
+        <textarea
+          id="newTopicNotes"
+          required
+          rows="5"
+          placeholder="Paste or write your detailed study notes, key terms, definitions, and facts here..."
+        ></textarea>
+
+        <div class="dialog-actions">
+          <button class="btn" id="cancelTopicBtn" type="button">Cancel</button>
+          <button class="btn btn-primary" type="submit">Save Topic</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="script.js"></script>
+  </body>
+</html>

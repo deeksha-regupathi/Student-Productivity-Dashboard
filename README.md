@@ -226,17 +226,16 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 
 ---
 
-### Option B: Cloud Platform as a Service (Render, Railway, Fly.io)
+### Option B: Cloud Platform as a Service (Railway, Render, Fly.io)
 
 1. **Configure Environment Variables**:
-   Set `NODE_ENV=production`, `PORT=3000`, `HOST=0.0.0.0`.
+   Set `NODE_ENV=production`, `PORT=3000`, `HOST=0.0.0.0`, `SESSION_SECRET=<random-32-byte-key>`.
 2. **Configure Persistent Disk / Volume**:
+   - **Railway**: Click **Add Volume** in the canvas UI and set the mount path to `/app/data`. *(Note: Railway requires volume persistence to be configured via the Railway dashboard UI rather than the Dockerfile `VOLUME` instruction).*
    - **Render**: Attach a persistent disk mounted at `/app/data` (or set `DB_PATH=/var/data/study_dashboard.db`).
-   - **Railway**: Add a Volume mounted at `/app/data`.
    - **Fly.io**: Create a volume `fly volumes create studypulse_data` and mount in `fly.toml` at `/app/data`.
-3. **Set Build & Start Commands**:
-   - Build: `npm install --omit=dev`
-   - Start: `node server.js`
+3. **Build & Start**:
+   - Dockerfile is automatically detected and built, running `node server.js` with persistent SQLite storage at `/app/data/study_dashboard.db`.
 
 ---
 

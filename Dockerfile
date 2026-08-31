@@ -21,9 +21,6 @@ COPY . .
 # Ensure data directory exists for SQLite database persistence
 RUN mkdir -p /app/data
 
-# Persistent volume mount point for SQLite database
-VOLUME ["/app/data"]
-
 # Expose port
 EXPOSE 3000
 

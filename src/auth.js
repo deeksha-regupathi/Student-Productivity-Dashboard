@@ -10,7 +10,7 @@ const SALT_BYTES = 16;
 const HASH_ITERATIONS = 10000;
 const HASH_KEYLEN = 64;
 const HASH_DIGEST = "sha512";
-const SESSION_EXPIRY_DAYS = 7;
+const SESSION_EXPIRY_DAYS = parseInt(process.env.SESSION_EXPIRY_DAYS, 10) || 7;
 
 /**
  * Hash a plain text password with a unique cryptographic salt.

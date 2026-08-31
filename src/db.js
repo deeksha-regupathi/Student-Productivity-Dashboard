@@ -38,6 +38,11 @@ function ensureColumnExists(db, table, column, definition) {
 }
 
 function initSchema(db) {
+  // Production pragmas
+  try {
+    db.exec("PRAGMA foreign_keys = ON;");
+  } catch (e) {}
+
   // 1. Users table (Phase 6)
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (

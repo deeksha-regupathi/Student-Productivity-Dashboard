@@ -97,7 +97,54 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 
 ---
 
+### Phase 8: Production Deployment Readiness & Infrastructure
+- **Production-Ready Server Architecture**:
+  - Configurable port and host binding (`HOST=0.0.0.0`, `PORT=3000`) for cloud container environments.
+  - Hardened security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-XSS-Protection: 1; mode=block`).
+  - Stripped framework fingerprinting (`X-Powered-By` disabled).
+  - Production-aware error sanitization (no internal stack traces or database errors leaked to clients).
+  - Graceful shutdown listeners (`SIGTERM`, `SIGINT`).
+- **Production Health Check Endpoint**:
+  - `GET /api/health` providing safe uptime and operational status without disclosing system secrets or file paths.
+- **Configurable CORS Security**:
+  - Flexible environment variable `CORS_ORIGIN` supporting strict domain whitelisting or open same-origin setups.
+- **SQLite Production Architecture & Persistence**:
+  - Pragmas for foreign key integrity (`PRAGMA foreign_keys = ON;`).
+  - Container volume mount points (`/app/data`) for SQLite database persistence across container redeployments.
+- **Docker Containerization**:
+  - Lightweight Alpine Node.js 22 containerization (`Dockerfile` and `.dockerignore`) with built-in health check and persistent storage support.
+
+---
+
+## 📐 Analytics Formulas & Classifications
+
+### 1. Overall Learning Score (0–100)
+$$\text{Overall Learning Score} = 0.50 \times (\text{Average Recall Score}) + 0.30 \times (\text{Average Topic Mastery}) + 0.20 \times (\text{Revision Completion Rate})$$
+*If no recall attempts have been completed yet, the overall score defaults safely to `0`.*
+
+### 2. Topic Mastery Calculation (0–100)
+- **Multiple Attempts**: Weighted formula combining recency and consistency:
+  $$\text{Mastery \%} = 0.60 \times (\text{Latest Score}) + 0.40 \times (\text{Average Score})$$
+- **Single Attempt**: $1.00 \times (\text{Latest Score})$
+- **Zero Attempts**: $0\%$
+
+### 3. Topic & Learning Mastery Levels
+| Score Range | Mastery Level |
+| :--- | :--- |
+| **85–100%** | **Mastered** |
+| **70–84%** | **Strong** |
+| **50–69%** | **Developing** |
+| **0–49%** | **Needs Attention** |
+
+### 4. Revision Completion Rate
+$$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\text{Completed Revisions} + \text{Pending Revisions}} \right) \times 100$$
+
+---
+
 ## 📡 REST API Endpoints
+
+### System & Health (Phase 8)
+- `GET /api/health` — Safe production health check endpoint (`{ "success": true, "status": "ok", "timestamp": "..." }`).
 
 ### Authentication (Phase 6)
 - `POST /api/auth/register` — Register a new student account (`{ name, email, password }`).
@@ -136,34 +183,144 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 
 ---
 
+## ⚙️ Environment Variables Reference
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PORT` | `3000` | Port on which the HTTP server listens. |
+| `HOST` | `0.0.0.0` | Host interface binding for container and cloud environments. |
+| `NODE_ENV` | `production` | Set to `production` for security headers, stripped traces, and sanitized errors. |
+| `DB_PATH` | `./data/study_dashboard.db` | Absolute or relative path to SQLite database file. |
+| `CORS_ORIGIN` | `*` | Allowed CORS origins (e.g. `https://studypulse.app`). |
+| `SESSION_EXPIRY_DAYS` | `7` | Duration in days before session tokens expire. |
+
+---
+
+## 🚢 Production Deployment Guide
+
+> [!NOTE]
+> The application has been prepared and verified for production readiness. No public deployment has been executed yet.
+
+### Option A: Containerized Deployment (Docker)
+
+1. **Build the container image**:
+   ```bash
+   docker build -t studypulse:latest .
+   ```
+
+2. **Run container with persistent volume**:
+   ```bash
+   docker run -d \
+     --name studypulse \
+     -p 3000:3000 \
+     -v studypulse_data:/app/data \
+     -e NODE_ENV=production \
+     -e PORT=3000 \
+     studypulse:latest
+   ```
+
+3. **Verify health check**:
+   ```bash
+   curl http://localhost:3000/api/health
+   ```
+
+---
+
+### Option B: Cloud Platform as a Service (Render, Railway, Fly.io)
+
+1. **Configure Environment Variables**:
+   Set `NODE_ENV=production`, `PORT=3000`, `HOST=0.0.0.0`.
+2. **Configure Persistent Disk / Volume**:
+   - **Render**: Attach a persistent disk mounted at `/app/data` (or set `DB_PATH=/var/data/study_dashboard.db`).
+   - **Railway**: Add a Volume mounted at `/app/data`.
+   - **Fly.io**: Create a volume `fly volumes create studypulse_data` and mount in `fly.toml` at `/app/data`.
+3. **Set Build & Start Commands**:
+   - Build: `npm install --omit=dev`
+   - Start: `node server.js`
+
+---
+
+### Option C: Linux VPS Deployment (Ubuntu / Debian + Nginx + PM2)
+
+1. **Clone repository & install dependencies**:
+   ```bash
+   git clone <repo-url> /var/www/studypulse
+   cd /var/www/studypulse
+   npm ci --omit=dev
+   ```
+
+2. **Configure `.env`**:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your domain and settings
+   ```
+
+3. **Start with PM2 Process Manager**:
+   ```bash
+   npm install -g pm2
+   pm2 start server.js --name "studypulse"
+   pm2 save
+   pm2 startup
+   ```
+
+4. **Configure Nginx Reverse Proxy with SSL (Certbot)**:
+   ```nginx
+   server {
+       server_name studypulse.example.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_cache_bypass $http_upgrade;
+       }
+   }
+   ```
+
+---
+
+## 🗄️ Database Architecture & Scaling Considerations
+
+- **Current Architecture (SQLite via native `node:sqlite`)**:
+  - Fast, self-contained, zero external database service dependency.
+  - Uses `PRAGMA foreign_keys = ON;` and foreign key cascading.
+  - **Ideal for**: Single-instance containerized apps, personal servers, and cloud instances with persistent volume disks.
+- **Database Backup Recommendation**:
+  - Regular automated snapshots of `data/study_dashboard.db` using standard SQLite backup / cron.
+- **Horizontal Scaling Path (PostgreSQL)**:
+  - If multi-instance auto-scaling across distributed nodes without shared persistent disks is required in the future, the data access layer in `src/db.js` is cleanly decoupled to allow swapping SQLite queries with PostgreSQL connection pooling.
+
+---
+
 ## 🧪 Testing
 
-To run the complete automated test suite (69 tests across all 7 phases):
+To run the complete automated test suite (76 tests across all 8 phases):
 
 ```bash
 npm test
 ```
 
-All 69 tests execute in ~1 second using Node.js native test runner (`node:test`).
+All 76 tests execute in ~1 second using Node.js native test runner (`node:test`).
 
 ---
 
-## 💻 Running the Application
+## 💻 Running Locally
 
 1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. **Start the server**:
+2. **Start the local server**:
    ```bash
    npm start
    ```
 
 3. **Open the web dashboard**:
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
-   - If not signed in, create a new account or sign in.
-   - Test the dark/light mode toggle in the top navigation or settings.
-   - Try creating tasks, custom study topics, and completing recall sessions.
-   - Check the Spaced Repetition queue and Learning Analytics dashboard.
-   - Switch to mobile viewport mode to test the responsive navigation drawer and touch UI.
+

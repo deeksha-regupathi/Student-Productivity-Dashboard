@@ -15,6 +15,19 @@ const analytics = require("../analytics");
 // Extracts token, verifies user, and attaches req.user and req.userId
 router.use(auth.authMiddleware({ strict: false }, () => db.getDatabase()));
 
+/**
+ * GET /api/health
+ * Production health check endpoint.
+ * Returns safe status without leaking system paths, secrets, or internal configs.
+ */
+router.get("/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    timestamp: new Date().toISOString()
+  });
+});
+
 // =========================================================
 // PHASE 6: AUTHENTICATION ROUTES
 // =========================================================

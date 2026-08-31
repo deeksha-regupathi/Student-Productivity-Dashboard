@@ -1,7 +1,7 @@
 /**
- * Personalized Learning Analytics Service (Phase 5)
+ * Personalized Learning Analytics Service (Phase 5 & 6)
  * Pure, deterministic data aggregation and insight generation based on recall attempts,
- * topic mastery, subject performance, and spaced repetition revisions.
+ * topic mastery, subject performance, and spaced repetition revisions with User Isolation.
  */
 
 const { getRevisionUrgency } = require("./scheduler");
@@ -70,12 +70,23 @@ function getTodayDateStr(date = new Date()) {
 }
 
 /**
- * Topic Analytics & Mastery List
+ * Topic Analytics & Mastery List (User-Isolated)
  */
-function getTopicMasteryAnalytics(db) {
-  const topics = db.prepare(`SELECT * FROM topics ORDER BY title ASC`).all();
-  const attempts = db.prepare(`SELECT * FROM recall_attempts ORDER BY created_at ASC`).all();
-  const revisions = db.prepare(`SELECT * FROM revisions`).all();
+function getTopicMasteryAnalytics(db, userId = null) {
+  const topicsQuery = userId 
+    ? `SELECT * FROM topics WHERE user_id IS NULL OR user_id = ? ORDER BY title ASC`
+    : `SELECT * FROM topics ORDER BY title ASC`;
+  const topics = userId ? db.prepare(topicsQuery).all(userId) : db.prepare(topicsQuery).all();
+
+  const attemptsQuery = userId
+    ? `SELECT * FROM recall_attempts WHERE user_id IS NULL OR user_id = ? ORDER BY created_at ASC`
+    : `SELECT * FROM recall_attempts ORDER BY created_at ASC`;
+  const attempts = userId ? db.prepare(attemptsQuery).all(userId) : db.prepare(attemptsQuery).all();
+
+  const revsQuery = userId
+    ? `SELECT * FROM revisions WHERE user_id IS NULL OR user_id = ?`
+    : `SELECT * FROM revisions`;
+  const revisions = userId ? db.prepare(revsQuery).all(userId) : db.prepare(revsQuery).all();
 
   // Group attempts by topic
   const attemptsByTopic = {};
@@ -127,11 +138,14 @@ function getTopicMasteryAnalytics(db) {
 }
 
 /**
- * Subject-wise Analytics
+ * Subject-wise Analytics (User-Isolated)
  */
-function getSubjectAnalytics(db) {
-  const topicStats = getTopicMasteryAnalytics(db);
-  const revisions = db.prepare(`SELECT * FROM revisions`).all();
+function getSubjectAnalytics(db, userId = null) {
+  const topicStats = getTopicMasteryAnalytics(db, userId);
+  const revsQuery = userId
+    ? `SELECT * FROM revisions WHERE user_id IS NULL OR user_id = ?`
+    : `SELECT * FROM revisions`;
+  const revisions = userId ? db.prepare(revsQuery).all(userId) : db.prepare(revsQuery).all();
   const todayStr = getTodayDateStr();
 
   // Build revision lookup
@@ -195,14 +209,23 @@ function getSubjectAnalytics(db) {
 }
 
 /**
- * Recall Performance Trend over Time
+ * Recall Performance Trend over Time (User-Isolated)
  */
-function getRecallTrend(db) {
-  const attempts = db.prepare(`
+function getRecallTrend(db, userId = null) {
+  let query = `
     SELECT score, created_at
     FROM recall_attempts
-    ORDER BY created_at ASC
-  `).all();
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ` WHERE user_id IS NULL OR user_id = ?`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY created_at ASC`;
+
+  const attempts = db.prepare(query).all(...params);
 
   const grouped = {};
   for (const a of attempts) {
@@ -235,15 +258,24 @@ function getRecallTrend(db) {
 }
 
 /**
- * Revision Analytics
+ * Revision Analytics (User-Isolated)
  */
-function getRevisionAnalytics(db, todayStr = getTodayDateStr()) {
-  const revisions = db.prepare(`
+function getRevisionAnalytics(db, userId = null, todayStr = getTodayDateStr()) {
+  let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject
     FROM revisions r
     LEFT JOIN topics t ON r.topic_id = t.id
-    ORDER BY r.revision_date ASC
-  `).all();
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ` WHERE r.user_id IS NULL OR r.user_id = ?`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY r.revision_date ASC`;
+
+  const revisions = db.prepare(query).all(...params);
 
   const completed = revisions.filter((r) => r.status === "completed").length;
   const pending = revisions.filter((r) => r.status === "pending").length;
@@ -287,23 +319,31 @@ function getRevisionAnalytics(db, todayStr = getTodayDateStr()) {
 }
 
 /**
- * Overall Learning Analytics Overview
+ * Overall Learning Analytics Overview (User-Isolated)
  */
-function getAnalyticsOverview(db, todayStr = getTodayDateStr()) {
-  const topics = db.prepare(`SELECT COUNT(*) AS count FROM topics`).get()?.count || 0;
-  const attempts = db.prepare(`SELECT score FROM recall_attempts`).all();
+function getAnalyticsOverview(db, userId = null, todayStr = getTodayDateStr()) {
+  const topicsQuery = userId
+    ? `SELECT COUNT(*) AS count FROM topics WHERE user_id IS NULL OR user_id = ?`
+    : `SELECT COUNT(*) AS count FROM topics`;
+  const topics = (userId ? db.prepare(topicsQuery).get(userId) : db.prepare(topicsQuery).get())?.count || 0;
+
+  const attemptsQuery = userId
+    ? `SELECT score FROM recall_attempts WHERE user_id IS NULL OR user_id = ?`
+    : `SELECT score FROM recall_attempts`;
+  const attempts = userId ? db.prepare(attemptsQuery).all(userId) : db.prepare(attemptsQuery).all();
+  
   const totalAttempts = attempts.length;
   const avgRecallScore = totalAttempts > 0
     ? Math.round(attempts.reduce((s, a) => s + a.score, 0) / totalAttempts)
     : 0;
 
-  const topicAnalytics = getTopicMasteryAnalytics(db);
+  const topicAnalytics = getTopicMasteryAnalytics(db, userId);
   const masteredTopicsCount = topicAnalytics.filter((t) => t.mastery_level === "Mastered").length;
   const avgMastery = topicAnalytics.length > 0
     ? Math.round(topicAnalytics.reduce((s, t) => s + t.mastery_percentage, 0) / topicAnalytics.length)
     : 0;
 
-  const revStats = getRevisionAnalytics(db, todayStr);
+  const revStats = getRevisionAnalytics(db, userId, todayStr);
 
   const overallLearningScore = calculateOverallLearningScore({
     averageRecallScore: avgRecallScore,
@@ -343,13 +383,13 @@ function getAnalyticsOverview(db, todayStr = getTodayDateStr()) {
 }
 
 /**
- * Generate Personalized, Deterministic Learning Insights
+ * Generate Personalized, Deterministic Learning Insights (User-Isolated)
  */
-function generateLearningInsights(db, todayStr = getTodayDateStr()) {
-  const overview = getAnalyticsOverview(db, todayStr);
-  const subjects = getSubjectAnalytics(db);
-  const trend = getRecallTrend(db);
-  const topicStats = getTopicMasteryAnalytics(db);
+function generateLearningInsights(db, userId = null, todayStr = getTodayDateStr()) {
+  const overview = getAnalyticsOverview(db, userId, todayStr);
+  const subjects = getSubjectAnalytics(db, userId);
+  const trend = getRecallTrend(db, userId);
+  const topicStats = getTopicMasteryAnalytics(db, userId);
 
   const insights = [];
 

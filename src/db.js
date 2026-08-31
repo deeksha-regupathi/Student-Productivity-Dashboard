@@ -25,24 +25,82 @@ function getDatabase(customPath) {
   return dbInstance;
 }
 
+function ensureColumnExists(db, table, column, definition) {
+  try {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+    const exists = columns.some(c => c.name === column);
+    if (!exists && columns.length > 0) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  } catch (e) {
+    // If table doesn't exist yet, it will be created by CREATE TABLE IF NOT EXISTS
+  }
+}
+
 function initSchema(db) {
-  // Topics table
+  // 1. Users table (Phase 6)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+  `);
+
+  // 2. Sessions table (Phase 6)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+  `);
+
+  // 3. User Tasks table (Phase 6)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      due_date TEXT,
+      completed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+  `);
+
+  // 4. Topics table
   db.exec(`
     CREATE TABLE IF NOT EXISTS topics (
       id TEXT PRIMARY KEY,
+      user_id TEXT,
       title TEXT NOT NULL,
       subject TEXT NOT NULL,
       question TEXT NOT NULL,
       notes TEXT NOT NULL,
       key_concepts TEXT NOT NULL,
-      created_at TEXT NOT NULL
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
   `);
+  ensureColumnExists(db, "topics", "user_id", "TEXT");
 
-  // Recall attempts table
+  // 5. Recall attempts table
   db.exec(`
     CREATE TABLE IF NOT EXISTS recall_attempts (
       id TEXT PRIMARY KEY,
+      user_id TEXT,
       topic_id TEXT NOT NULL,
       student_answer TEXT NOT NULL,
       score INTEGER NOT NULL,
@@ -56,11 +114,17 @@ function initSchema(db) {
       FOREIGN KEY (topic_id) REFERENCES topics(id)
     );
   `);
+  ensureColumnExists(db, "recall_attempts", "user_id", "TEXT");
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_recall_attempts_user_id ON recall_attempts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_recall_attempts_topic_id ON recall_attempts(topic_id);
+  `);
 
-  // Phase 4: Revisions table for Spaced Repetition
+  // 6. Revisions table
   db.exec(`
     CREATE TABLE IF NOT EXISTS revisions (
       id TEXT PRIMARY KEY,
+      user_id TEXT,
       topic_id TEXT NOT NULL,
       recall_attempt_id TEXT NOT NULL,
       score INTEGER NOT NULL,
@@ -71,15 +135,31 @@ function initSchema(db) {
       FOREIGN KEY (topic_id) REFERENCES topics(id),
       FOREIGN KEY (recall_attempt_id) REFERENCES recall_attempts(id)
     );
-
+  `);
+  ensureColumnExists(db, "revisions", "user_id", "TEXT");
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_revisions_user_id ON revisions(user_id);
     CREATE INDEX IF NOT EXISTS idx_revisions_topic_id ON revisions(topic_id);
     CREATE INDEX IF NOT EXISTS idx_revisions_status_date ON revisions(status, revision_date);
   `);
 
-  // Seed default topics if empty
-  const countRow = db.prepare("SELECT COUNT(*) AS count FROM topics").get();
+  // Ensure default demo user exists for test compatibility
+  seedDemoUser(db);
+
+  // Seed default system topics if empty
+  const countRow = db.prepare("SELECT COUNT(*) AS count FROM topics WHERE user_id IS NULL").get();
   if (countRow && countRow.count === 0) {
     seedTopics(db);
+  }
+}
+
+function seedDemoUser(db) {
+  const existing = db.prepare("SELECT id FROM users WHERE id = 'demo-user-1'").get();
+  if (!existing) {
+    db.prepare(`
+      INSERT INTO users (id, name, email, password_hash, salt, created_at)
+      VALUES ('demo-user-1', 'Deeksha', 'deeksha@studypulse.local', 'mockhash', 'mocksalt', ?)
+    `).run(new Date().toISOString());
   }
 }
 
@@ -87,6 +167,7 @@ function seedTopics(db) {
   const sampleTopics = [
     {
       id: "topic-1",
+      user_id: null,
       title: "Cellular Respiration & Mitochondria",
       subject: "Biology",
       question: "Explain the purpose of cellular respiration, where it takes place, its key stages, and how ATP is generated.",
@@ -129,6 +210,7 @@ Mitochondria are known as the powerhouse of the cell because the majority of ATP
     },
     {
       id: "topic-2",
+      user_id: null,
       title: "Newton's Three Laws of Motion",
       subject: "Physics",
       question: "State and explain Newton's Three Laws of Motion with real-world examples and the formula for force.",
@@ -169,6 +251,7 @@ Example: A rocket launches upward because the downward thrust of expelled gases 
     },
     {
       id: "topic-3",
+      user_id: null,
       title: "Time Complexity & Big-O Notation",
       subject: "Computer Science",
       question: "What is Big-O notation, why is it used, and how do O(1), O(log n), O(n), and O(n^2) compare in efficiency?",
@@ -216,6 +299,7 @@ Best vs Worst vs Average Case:
     },
     {
       id: "topic-4",
+      user_id: null,
       title: "Photosynthesis Process & Light Reactions",
       subject: "Biology",
       question: "Explain the stages of photosynthesis, where light and dark reactions occur, and the chemical inputs and outputs.",
@@ -261,22 +345,31 @@ The process takes place inside the chloroplasts and is divided into two main sta
   ];
 
   const stmt = db.prepare(`
-    INSERT INTO topics (id, title, subject, question, notes, key_concepts, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO topics (id, user_id, title, subject, question, notes, key_concepts, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const t of sampleTopics) {
-    stmt.run(t.id, t.title, t.subject, t.question, t.notes, t.key_concepts, t.created_at);
+    stmt.run(t.id, t.user_id, t.title, t.subject, t.question, t.notes, t.key_concepts, t.created_at);
   }
 }
 
-// Database helper functions: Topics
-function getAllTopics(db = getDatabase()) {
-  const rows = db.prepare(`
-    SELECT id, title, subject, question, notes, key_concepts, created_at
+// Database helper functions: Topics (Filtered by User)
+function getAllTopics(db = getDatabase(), userId = null) {
+  let query = `
+    SELECT id, user_id, title, subject, question, notes, key_concepts, created_at
     FROM topics
-    ORDER BY created_at ASC
-  `).all();
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ` WHERE user_id IS NULL OR user_id = ?`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY created_at ASC`;
+
+  const rows = db.prepare(query).all(...params);
 
   return rows.map(r => ({
     ...r,
@@ -284,12 +377,20 @@ function getAllTopics(db = getDatabase()) {
   }));
 }
 
-function getTopicById(id, db = getDatabase()) {
-  const row = db.prepare(`
-    SELECT id, title, subject, question, notes, key_concepts, created_at
+function getTopicById(id, db = getDatabase(), userId = null) {
+  let query = `
+    SELECT id, user_id, title, subject, question, notes, key_concepts, created_at
     FROM topics
     WHERE id = ?
-  `).get(id);
+  `;
+  const params = [id];
+
+  if (userId) {
+    query += ` AND (user_id IS NULL OR user_id = ?)`;
+    params.push(userId);
+  }
+
+  const row = db.prepare(query).get(...params);
 
   if (!row) return null;
   return {
@@ -298,18 +399,20 @@ function getTopicById(id, db = getDatabase()) {
   };
 }
 
-function createTopic(topicData, db = getDatabase()) {
+function createTopic(topicData, db = getDatabase(), userId = null) {
   const id = topicData.id || `topic-${Date.now()}`;
   const keyConceptsJson = typeof topicData.key_concepts === "string" 
     ? topicData.key_concepts 
     : JSON.stringify(topicData.key_concepts || []);
   const createdAt = topicData.created_at || new Date().toISOString();
+  const assignedUserId = userId || topicData.user_id || null;
 
   db.prepare(`
-    INSERT INTO topics (id, title, subject, question, notes, key_concepts, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO topics (id, user_id, title, subject, question, notes, key_concepts, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
+    assignedUserId,
     topicData.title,
     topicData.subject || "General",
     topicData.question || `Explain what you know about ${topicData.title}`,
@@ -318,13 +421,14 @@ function createTopic(topicData, db = getDatabase()) {
     createdAt
   );
 
-  return getTopicById(id, db);
+  return getTopicById(id, db, assignedUserId);
 }
 
-// Database helper functions: Recall Attempts
-function saveRecallAttempt(attemptData, db = getDatabase()) {
+// Database helper functions: Recall Attempts (Filtered by User)
+function saveRecallAttempt(attemptData, db = getDatabase(), userId = null) {
   const id = attemptData.id || `recall-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const createdAt = attemptData.created_at || new Date().toISOString();
+  const assignedUserId = userId || attemptData.user_id || null;
 
   const correctJson = typeof attemptData.correct_concepts === "string"
     ? attemptData.correct_concepts
@@ -344,11 +448,12 @@ function saveRecallAttempt(attemptData, db = getDatabase()) {
 
   db.prepare(`
     INSERT INTO recall_attempts (
-      id, topic_id, student_answer, score, level, feedback,
+      id, user_id, topic_id, student_answer, score, level, feedback,
       correct_concepts, partial_concepts, missed_concepts, suggestions, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     id,
+    assignedUserId,
     attemptData.topic_id,
     attemptData.student_answer,
     attemptData.score,
@@ -361,14 +466,19 @@ function saveRecallAttempt(attemptData, db = getDatabase()) {
     createdAt
   );
 
-  return getRecallAttemptById(id, db);
+  return getRecallAttemptById(id, db, assignedUserId);
 }
 
-function getRecallAttemptById(id, db = getDatabase()) {
-  const row = db.prepare(`
-    SELECT * FROM recall_attempts WHERE id = ?
-  `).get(id);
+function getRecallAttemptById(id, db = getDatabase(), userId = null) {
+  let query = `SELECT * FROM recall_attempts WHERE id = ?`;
+  const params = [id];
 
+  if (userId) {
+    query += ` AND (user_id IS NULL OR user_id = ?)`;
+    params.push(userId);
+  }
+
+  const row = db.prepare(query).get(...params);
   if (!row) return null;
 
   return {
@@ -380,12 +490,21 @@ function getRecallAttemptById(id, db = getDatabase()) {
   };
 }
 
-function getRecallHistoryByTopic(topicId, db = getDatabase()) {
-  const rows = db.prepare(`
+function getRecallHistoryByTopic(topicId, db = getDatabase(), userId = null) {
+  let query = `
     SELECT * FROM recall_attempts
     WHERE topic_id = ?
-    ORDER BY created_at DESC
-  `).all(topicId);
+  `;
+  const params = [topicId];
+
+  if (userId) {
+    query += ` AND (user_id IS NULL OR user_id = ?)`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY created_at DESC`;
+
+  const rows = db.prepare(query).all(...params);
 
   return rows.map(r => ({
     ...r,
@@ -396,13 +515,22 @@ function getRecallHistoryByTopic(topicId, db = getDatabase()) {
   }));
 }
 
-function getAllRecallAttempts(db = getDatabase()) {
-  const rows = db.prepare(`
+function getAllRecallAttempts(db = getDatabase(), userId = null) {
+  let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject
     FROM recall_attempts r
     LEFT JOIN topics t ON r.topic_id = t.id
-    ORDER BY r.created_at DESC
-  `).all();
+  `;
+  const params = [];
+
+  if (userId) {
+    query += ` WHERE (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY r.created_at DESC`;
+
+  const rows = db.prepare(query).all(...params);
 
   return rows.map(r => ({
     ...r,
@@ -414,29 +542,39 @@ function getAllRecallAttempts(db = getDatabase()) {
 }
 
 // =========================================================
-// PHASE 4: REVISION SCHEDULING DATABASE METHODS
+// PHASE 4 & 6: REVISION SCHEDULING DATABASE METHODS (USER-ISOLATED)
 // =========================================================
 
 /**
  * Schedule or update a spaced repetition revision for a topic
  */
-function scheduleRevision({ topic_id, recall_attempt_id, score, revision_date, created_at }, db = getDatabase()) {
+function scheduleRevision({ topic_id, recall_attempt_id, score, revision_date, created_at }, db = getDatabase(), userId = null) {
   const id = `rev-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const now = created_at || new Date().toISOString();
+  const assignedUserId = userId || null;
 
-  // If there are existing pending revisions for this topic, mark them superseded
-  db.prepare(`
+  // Mark previous pending revisions for this topic and user as superseded
+  let updateQuery = `
     UPDATE revisions 
     SET status = 'superseded', completed_at = ?
     WHERE topic_id = ? AND status = 'pending'
-  `).run(now, topic_id);
+  `;
+  const updateParams = [now, topic_id];
+
+  if (assignedUserId) {
+    updateQuery += ` AND (user_id IS NULL OR user_id = ?)`;
+    updateParams.push(assignedUserId);
+  }
+
+  db.prepare(updateQuery).run(...updateParams);
 
   db.prepare(`
     INSERT INTO revisions (
-      id, topic_id, recall_attempt_id, score, revision_date, status, created_at
-    ) VALUES (?, ?, ?, ?, ?, 'pending', ?)
+      id, user_id, topic_id, recall_attempt_id, score, revision_date, status, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)
   `).run(
     id,
+    assignedUserId,
     topic_id,
     recall_attempt_id,
     score,
@@ -444,40 +582,52 @@ function scheduleRevision({ topic_id, recall_attempt_id, score, revision_date, c
     now
   );
 
-  return getRevisionById(id, db);
+  return getRevisionById(id, db, assignedUserId);
 }
 
 /**
- * Get a revision by its ID
+ * Get a revision by its ID (isolated by user)
  */
-function getRevisionById(id, db = getDatabase()) {
-  const row = db.prepare(`
-    SELECT r.*, t.title AS topic_title, t.subject AS topic_subject, t.question AS topic_question
-    FROM revisions r
-    LEFT JOIN topics t ON r.topic_id = t.id
-    WHERE r.id = ?
-  `).get(id);
-
-  return row || null;
-}
-
-/**
- * Get revisions (filtered by status if provided)
- */
-function getRevisions(filter = {}, db = getDatabase()) {
+function getRevisionById(id, db = getDatabase(), userId = null) {
   let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject, t.question AS topic_question
     FROM revisions r
     LEFT JOIN topics t ON r.topic_id = t.id
+    WHERE r.id = ?
+  `;
+  const params = [id];
+
+  if (userId) {
+    query += ` AND (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
+  const row = db.prepare(query).get(...params);
+  return row || null;
+}
+
+/**
+ * Get revisions (filtered by status and isolated by user)
+ */
+function getRevisions(filter = {}, db = getDatabase(), userId = null) {
+  let query = `
+    SELECT r.*, t.title AS topic_title, t.subject AS topic_subject, t.question AS topic_question
+    FROM revisions r
+    LEFT JOIN topics t ON r.topic_id = t.id
+    WHERE 1=1
   `;
   const params = [];
 
+  if (userId) {
+    query += ` AND (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
   if (filter.status) {
-    query += ` WHERE r.status = ?`;
+    query += ` AND r.status = ?`;
     params.push(filter.status);
   } else {
-    // Default to pending if no status specified or return active
-    query += ` WHERE r.status != 'superseded'`;
+    query += ` AND r.status != 'superseded'`;
   }
 
   query += ` ORDER BY r.revision_date ASC, r.created_at DESC`;
@@ -486,9 +636,9 @@ function getRevisions(filter = {}, db = getDatabase()) {
 }
 
 /**
- * Get due revisions (revision_date <= today and status = 'pending')
+ * Get due revisions (isolated by user)
  */
-function getDueRevisions(todayStr = null, db = getDatabase()) {
+function getDueRevisions(todayStr = null, db = getDatabase(), userId = null) {
   if (!todayStr) {
     const today = new Date();
     const year = today.getFullYear();
@@ -497,19 +647,28 @@ function getDueRevisions(todayStr = null, db = getDatabase()) {
     todayStr = `${year}-${month}-${day}`;
   }
 
-  return db.prepare(`
+  let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject, t.question AS topic_question
     FROM revisions r
     LEFT JOIN topics t ON r.topic_id = t.id
     WHERE r.status = 'pending' AND r.revision_date <= ?
-    ORDER BY r.revision_date ASC, r.score ASC
-  `).all(todayStr);
+  `;
+  const params = [todayStr];
+
+  if (userId) {
+    query += ` AND (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY r.revision_date ASC, r.score ASC`;
+
+  return db.prepare(query).all(...params);
 }
 
 /**
- * Get upcoming revisions (revision_date > today and status = 'pending')
+ * Get upcoming revisions (isolated by user)
  */
-function getUpcomingRevisions(todayStr = null, db = getDatabase()) {
+function getUpcomingRevisions(todayStr = null, db = getDatabase(), userId = null) {
   if (!todayStr) {
     const today = new Date();
     const year = today.getFullYear();
@@ -518,33 +677,51 @@ function getUpcomingRevisions(todayStr = null, db = getDatabase()) {
     todayStr = `${year}-${month}-${day}`;
   }
 
-  return db.prepare(`
+  let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject, t.question AS topic_question
     FROM revisions r
     LEFT JOIN topics t ON r.topic_id = t.id
     WHERE r.status = 'pending' AND r.revision_date > ?
-    ORDER BY r.revision_date ASC, r.score ASC
-  `).all(todayStr);
+  `;
+  const params = [todayStr];
+
+  if (userId) {
+    query += ` AND (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY r.revision_date ASC, r.score ASC`;
+
+  return db.prepare(query).all(...params);
 }
 
 /**
- * Get revision history for a topic
+ * Get revision history for a topic (isolated by user)
  */
-function getRevisionsByTopic(topicId, db = getDatabase()) {
-  return db.prepare(`
+function getRevisionsByTopic(topicId, db = getDatabase(), userId = null) {
+  let query = `
     SELECT r.*, t.title AS topic_title, t.subject AS topic_subject
     FROM revisions r
     LEFT JOIN topics t ON r.topic_id = t.id
     WHERE r.topic_id = ?
-    ORDER BY r.created_at DESC
-  `).all(topicId);
+  `;
+  const params = [topicId];
+
+  if (userId) {
+    query += ` AND (r.user_id IS NULL OR r.user_id = ?)`;
+    params.push(userId);
+  }
+
+  query += ` ORDER BY r.created_at DESC`;
+
+  return db.prepare(query).all(...params);
 }
 
 /**
- * Mark a revision as completed
+ * Mark a revision as completed (with user ownership check)
  */
-function completeRevision(id, db = getDatabase()) {
-  const existing = getRevisionById(id, db);
+function completeRevision(id, db = getDatabase(), userId = null) {
+  const existing = getRevisionById(id, db, userId);
   if (!existing) return null;
 
   const now = new Date().toISOString();
@@ -554,7 +731,93 @@ function completeRevision(id, db = getDatabase()) {
     WHERE id = ?
   `).run(now, id);
 
-  return getRevisionById(id, db);
+  return getRevisionById(id, db, userId);
+}
+
+// =========================================================
+// PHASE 6: USER TASK MANAGEMENT METHODS (USER-ISOLATED)
+// =========================================================
+
+function getUserTasks(userId, db = getDatabase()) {
+  if (!userId) return [];
+  const rows = db.prepare(`
+    SELECT id, user_id, title, description, priority, due_date AS dueDate, completed, created_at
+    FROM tasks
+    WHERE user_id = ?
+    ORDER BY due_date ASC, created_at DESC
+  `).all(userId);
+
+  return rows.map(r => ({
+    ...r,
+    completed: Boolean(r.completed)
+  }));
+}
+
+function createTask(taskData, userId, db = getDatabase()) {
+  if (!userId) throw new Error("userId is required to create a task.");
+  const id = taskData.id || `task-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    INSERT INTO tasks (id, user_id, title, description, priority, due_date, completed, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    userId,
+    taskData.title,
+    taskData.description || "",
+    taskData.priority || "medium",
+    taskData.dueDate || taskData.due_date || null,
+    taskData.completed ? 1 : 0,
+    now
+  );
+
+  return {
+    id,
+    user_id: userId,
+    title: taskData.title,
+    description: taskData.description || "",
+    priority: taskData.priority || "medium",
+    dueDate: taskData.dueDate || taskData.due_date || null,
+    completed: Boolean(taskData.completed),
+    created_at: now
+  };
+}
+
+function updateTask(id, taskData, userId, db = getDatabase()) {
+  if (!userId || !id) return null;
+  const existing = db.prepare(`SELECT * FROM tasks WHERE id = ? AND user_id = ?`).get(id, userId);
+  if (!existing) return null;
+
+  db.prepare(`
+    UPDATE tasks 
+    SET title = ?, description = ?, priority = ?, due_date = ?, completed = ?
+    WHERE id = ? AND user_id = ?
+  `).run(
+    taskData.title !== undefined ? taskData.title : existing.title,
+    taskData.description !== undefined ? taskData.description : existing.description,
+    taskData.priority !== undefined ? taskData.priority : existing.priority,
+    taskData.dueDate !== undefined ? taskData.dueDate : (taskData.due_date !== undefined ? taskData.due_date : existing.due_date),
+    taskData.completed !== undefined ? (taskData.completed ? 1 : 0) : existing.completed,
+    id,
+    userId
+  );
+
+  return {
+    id,
+    user_id: userId,
+    title: taskData.title !== undefined ? taskData.title : existing.title,
+    description: taskData.description !== undefined ? taskData.description : existing.description,
+    priority: taskData.priority !== undefined ? taskData.priority : existing.priority,
+    dueDate: taskData.dueDate !== undefined ? taskData.dueDate : existing.due_date,
+    completed: taskData.completed !== undefined ? Boolean(taskData.completed) : Boolean(existing.completed)
+  };
+}
+
+function deleteTask(id, userId, db = getDatabase()) {
+  if (!userId || !id) return false;
+  const result = db.prepare(`DELETE FROM tasks WHERE id = ? AND user_id = ?`).run(id, userId);
+  return result.changes > 0;
 }
 
 module.exports = {
@@ -573,5 +836,9 @@ module.exports = {
   getDueRevisions,
   getUpcomingRevisions,
   getRevisionsByTopic,
-  completeRevision
+  completeRevision,
+  getUserTasks,
+  createTask,
+  updateTask,
+  deleteTask
 };

@@ -74,13 +74,16 @@
 
           <div class="header-right">
             <p class="header-date" id="currentDate">Loading date...</p>
-            <div class="user-chip">
-              <span class="user-avatar" aria-hidden="true">D</span>
+            <div class="user-chip" id="userChip">
+              <span class="user-avatar" id="userAvatar" aria-hidden="true">D</span>
               <div>
-                <p class="user-name">Deeksha</p>
-                <p class="user-role">Student</p>
+                <p class="user-name" id="userName">Deeksha</p>
+                <p class="user-role" id="userRole">Student</p>
               </div>
             </div>
+            <button class="btn btn-small btn-logout" id="logoutBtn" type="button" title="Sign out of your account">
+              Sign Out
+            </button>
           </div>
         </header>
 
@@ -727,6 +730,67 @@
           <button class="btn btn-primary" type="submit">Save Topic</button>
         </div>
       </form>
+    </dialog>
+
+    <!-- Phase 6 Authentication Dialog (Modal for Login / Registration) -->
+    <dialog class="auth-dialog" id="authDialog">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="auth-brand">
+            <span class="auth-logo-icon">⚡</span>
+            <h2>StudyPulse</h2>
+          </div>
+          <p class="auth-subtitle">Secure Student Productivity & Spaced Recall</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button class="auth-tab is-active" id="tabSignInBtn" type="button">Sign In</button>
+          <button class="auth-tab" id="tabSignUpBtn" type="button">Create Account</button>
+        </div>
+
+        <!-- Sign In Form -->
+        <form id="signInForm" class="auth-form">
+          <div class="auth-input-group">
+            <label for="loginEmail">Email address</label>
+            <input id="loginEmail" type="email" required placeholder="student@university.edu" autocomplete="email" />
+          </div>
+
+          <div class="auth-input-group">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" required placeholder="••••••••" autocomplete="current-password" />
+          </div>
+
+          <div class="auth-alert" id="loginAlert" hidden></div>
+
+          <button type="submit" class="btn btn-primary auth-submit-btn" id="loginSubmitBtn">
+            <span class="btn-text">Sign In →</span>
+          </button>
+        </form>
+
+        <!-- Create Account Form -->
+        <form id="signUpForm" class="auth-form" hidden>
+          <div class="auth-input-group">
+            <label for="regName">Full Name</label>
+            <input id="regName" type="text" required placeholder="e.g. Deeksha Sharma" autocomplete="name" />
+          </div>
+
+          <div class="auth-input-group">
+            <label for="regEmail">Email address</label>
+            <input id="regEmail" type="email" required placeholder="name@domain.com" autocomplete="email" />
+          </div>
+
+          <div class="auth-input-group">
+            <label for="regPassword">Password (min. 6 characters)</label>
+            <input id="regPassword" type="password" required minlength="6" placeholder="••••••••" autocomplete="new-password" />
+          </div>
+
+          <div class="auth-alert" id="regAlert" hidden></div>
+
+          <button type="submit" class="btn btn-primary auth-submit-btn" id="regSubmitBtn">
+            <span class="btn-text">Create Account →</span>
+          </button>
+        </form>
+      </div>
     </dialog>
 
     <script src="script.js"></script>

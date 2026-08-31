@@ -39,21 +39,228 @@ if (overlay) {
   overlay.addEventListener("click", closeSidebar);
 }
 
+// =========================================================
+// PHASE 6: AUTHENTICATION STATE & MANAGEMENT
+// =========================================================
+
+const AUTH_TOKEN_KEY = "studypulse_token";
+const AUTH_USER_KEY = "studypulse_user";
+
+function getAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+}
+
+function getCurrentUser() {
+  try {
+    const userStr = localStorage.getItem(AUTH_USER_KEY);
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getAuthHeaders() {
+  const token = getAuthToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+function setAuthSession(user, token) {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  updateUserHeaderUI(user);
+}
+
+function clearAuthSession() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_USER_KEY);
+}
+
+// User Header UI Elements
+const userAvatarEl = document.getElementById("userAvatar");
+const userNameEl = document.getElementById("userName");
+const userRoleEl = document.getElementById("userRole");
+const welcomeHeadingEl = document.getElementById("welcomeHeading");
+const logoutBtn = document.getElementById("logoutBtn");
+
+function updateUserHeaderUI(user) {
+  if (!user) return;
+  const name = user.name || "Student";
+  const initial = name.charAt(0).toUpperCase();
+
+  if (userAvatarEl) userAvatarEl.textContent = initial;
+  if (userNameEl) userNameEl.textContent = name;
+  if (userRoleEl) userRoleEl.textContent = user.email || "Student";
+  if (welcomeHeadingEl) welcomeHeadingEl.textContent = `Welcome back, ${name.split(" ")[0]}`;
+}
+
+// Auth Dialog Elements
+const authDialog = document.getElementById("authDialog");
+const tabSignInBtn = document.getElementById("tabSignInBtn");
+const tabSignUpBtn = document.getElementById("tabSignUpBtn");
+const signInForm = document.getElementById("signInForm");
+const signUpForm = document.getElementById("signUpForm");
+const loginAlert = document.getElementById("loginAlert");
+const regAlert = document.getElementById("regAlert");
+
+function showAuthModal(mode = "signin") {
+  if (!authDialog) return;
+  if (mode === "signin") {
+    tabSignInBtn.classList.add("is-active");
+    tabSignUpBtn.classList.remove("is-active");
+    signInForm.hidden = false;
+    signUpForm.hidden = true;
+  } else {
+    tabSignUpBtn.classList.add("is-active");
+    tabSignInBtn.classList.remove("is-active");
+    signUpForm.hidden = false;
+    signInForm.hidden = true;
+  }
+  if (loginAlert) loginAlert.hidden = true;
+  if (regAlert) regAlert.hidden = true;
+
+  if (!authDialog.open) {
+    authDialog.showModal();
+  }
+}
+
+function closeAuthModal() {
+  if (authDialog && authDialog.open) {
+    authDialog.close();
+  }
+}
+
+if (tabSignInBtn) tabSignInBtn.addEventListener("click", () => showAuthModal("signin"));
+if (tabSignUpBtn) tabSignUpBtn.addEventListener("click", () => showAuthModal("signup"));
+
+// Handle Sign In Submit
+if (signInForm) {
+  signInForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+
+    if (!email || !password) return;
+
+    if (loginAlert) loginAlert.hidden = true;
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Invalid email or password.");
+      }
+
+      setAuthSession(data.user, data.token);
+      closeAuthModal();
+      await initializeDashboardData();
+    } catch (err) {
+      if (loginAlert) {
+        loginAlert.textContent = err.message || "Failed to sign in.";
+        loginAlert.hidden = false;
+      }
+    }
+  });
+}
+
+// Handle Sign Up Submit
+if (signUpForm) {
+  signUpForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const name = document.getElementById("regName").value.trim();
+    const email = document.getElementById("regEmail").value.trim();
+    const password = document.getElementById("regPassword").value;
+
+    if (!name || !email || !password) return;
+
+    if (regAlert) regAlert.hidden = true;
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to create account.");
+      }
+
+      setAuthSession(data.user, data.token);
+      closeAuthModal();
+      await initializeDashboardData();
+    } catch (err) {
+      if (regAlert) {
+        regAlert.textContent = err.message || "Registration failed.";
+        regAlert.hidden = false;
+      }
+    }
+  });
+}
+
+// Handle Logout
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+    } catch (e) {}
+
+    clearAuthSession();
+    showAuthModal("signin");
+  });
+}
+
+async function verifyAuthOrPrompt() {
+  const token = getAuthToken();
+  if (!token) {
+    showAuthModal("signin");
+    return false;
+  }
+
+  try {
+    const res = await fetch("/api/auth/me", {
+      headers: getAuthHeaders(),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.user) {
+        updateUserHeaderUI(data.user);
+        return true;
+      }
+    }
+  } catch (err) {}
+
+  clearAuthSession();
+  showAuthModal("signin");
+  return false;
+}
+
 // ===== View Navigation Routing =====
 const viewPanes = {
   dashboard: document.getElementById("viewDashboard"),
   recall: document.getElementById("viewRecall"),
-  tasks: document.getElementById("viewDashboard"), // Tasks scrolls/focuses dashboard
+  tasks: document.getElementById("viewDashboard"),
   subjects: document.getElementById("viewSubjects"),
   analytics: document.getElementById("viewAnalytics"),
-  progress: document.getElementById("viewAnalytics"), // Alias for backward compatibility
+  progress: document.getElementById("viewAnalytics"),
   settings: document.getElementById("viewSettings"),
 };
 
 function switchView(viewName) {
   const normalizedView = viewName === "progress" ? "analytics" : viewName;
 
-  // Update sidebar active link
   document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
     const linkView = link.getAttribute("data-view");
     if (linkView === normalizedView || (normalizedView === "analytics" && linkView === "progress")) {
@@ -63,23 +270,20 @@ function switchView(viewName) {
     }
   });
 
-  // Hide all view panes
   Object.values(viewPanes).forEach((pane) => {
     if (pane) pane.hidden = true;
   });
 
-  // Show target view pane
   const targetPane = viewPanes[normalizedView] || viewPanes.dashboard;
   if (targetPane) {
     targetPane.hidden = false;
   }
 
-  // Close mobile sidebar if open
   closeSidebar();
 
-  // Trigger view-specific data refresh
   if (normalizedView === "dashboard") {
     loadRevisionQueue();
+    renderAllTasks();
   } else if (normalizedView === "recall") {
     loadTopicsForRecall();
   } else if (normalizedView === "subjects") {
@@ -104,8 +308,8 @@ document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
   });
 });
 
-// ===== Task Management (Phase 2 preserved) =====
-const STORAGE_KEY = "studentDashboardTasks";
+// ===== Task Management (Phase 6: Multi-User Server Persistence) =====
+let globalTasks = [];
 
 const taskListEl = document.getElementById("taskList");
 const taskCountEl = document.getElementById("taskCount");
@@ -124,49 +328,6 @@ const kpiTotal = document.getElementById("kpiTotal");
 const kpiCompleted = document.getElementById("kpiCompleted");
 const kpiPending = document.getElementById("kpiPending");
 
-function getSampleTasks() {
-  const todayStr = toDateInputValue(new Date());
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const inThreeDays = new Date();
-  inThreeDays.setDate(inThreeDays.getDate() + 3);
-
-  return [
-    {
-      id: "task-1",
-      title: "Revise Cellular Respiration Notes",
-      description: "Review glycolysis and Krebs cycle stages for active recall.",
-      priority: "medium",
-      dueDate: todayStr,
-      completed: true,
-    },
-    {
-      id: "task-2",
-      title: "Active Recall: Newton's Laws",
-      description: "Test memory on the 3 laws of motion without looking at notes.",
-      priority: "high",
-      dueDate: toDateInputValue(tomorrow),
-      completed: false,
-    },
-    {
-      id: "task-3",
-      title: "Practice Big-O Complexity Problems",
-      description: "Analyze logarithmic vs linearithmic runtime.",
-      priority: "low",
-      dueDate: todayStr,
-      completed: false,
-    },
-    {
-      id: "task-4",
-      title: "Photosynthesis Light Reactions Review",
-      description: "Memorize thylakoid membrane electron flow.",
-      priority: "medium",
-      dueDate: toDateInputValue(inThreeDays),
-      completed: false,
-    },
-  ];
-}
-
 function toDateInputValue(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -174,41 +335,21 @@ function toDateInputValue(date) {
   return year + "-" + month + "-" + day;
 }
 
-function loadTasks() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) {
-    const sample = getSampleTasks();
-    saveTasks(sample);
-    return sample;
-  }
-
+async function fetchUserTasks() {
   try {
-    const parsed = JSON.parse(saved);
-    if (Array.isArray(parsed)) {
-      return parsed.map(function (task) {
-        return {
-          id: String(task.id),
-          title: task.title || "",
-          description: task.description || "",
-          priority: task.priority || "medium",
-          dueDate: task.dueDate || toDateInputValue(new Date()),
-          completed: Boolean(task.completed),
-        };
-      });
+    const res = await fetch("/api/tasks", {
+      headers: getAuthHeaders(),
+    });
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data)) {
+      globalTasks = json.data;
+      return globalTasks;
     }
     return [];
-  } catch (error) {
-    console.error("Could not read saved tasks:", error);
+  } catch (err) {
+    console.error("Could not fetch tasks:", err);
     return [];
   }
-}
-
-function saveTasks(tasks) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-}
-
-function createTaskId() {
-  return "task-" + Date.now();
 }
 
 function escapeHtml(text) {
@@ -219,6 +360,7 @@ function escapeHtml(text) {
 }
 
 function formatDueDate(dateStr) {
+  if (!dateStr) return "No date";
   const date = new Date(dateStr + "T00:00:00");
   return date.toLocaleDateString("en-IN", {
     day: "numeric",
@@ -228,6 +370,7 @@ function formatDueDate(dateStr) {
 }
 
 function getDueLabel(dateStr) {
+  if (!dateStr) return "Upcoming";
   const due = new Date(dateStr + "T00:00:00");
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -251,7 +394,7 @@ function getFilteredTasks(tasks) {
   if (!query) return tasks;
 
   return tasks.filter(function (task) {
-    const haystack = (task.title + " " + task.description).toLowerCase();
+    const haystack = (task.title + " " + (task.description || "")).toLowerCase();
     return haystack.indexOf(query) !== -1;
   });
 }
@@ -326,7 +469,7 @@ function renderTaskList(tasks) {
         "</span>" +
         "</div>" +
         '<p class="task-description">' +
-        escapeHtml(task.description) +
+        escapeHtml(task.description || "") +
         "</p>" +
         '<div class="task-meta">' +
         "<span>Due " +
@@ -356,7 +499,7 @@ function renderDeadlines(tasks) {
       return !task.completed && task.dueDate;
     })
     .sort(function (a, b) {
-      return a.dueDate.localeCompare(b.dueDate);
+      return (a.dueDate || "").localeCompare(b.dueDate || "");
     })
     .slice(0, 5);
 
@@ -404,8 +547,8 @@ function renderDeadlines(tasks) {
     .join("");
 }
 
-function renderAllTasks() {
-  const tasks = loadTasks();
+async function renderAllTasks() {
+  const tasks = await fetchUserTasks();
   updateKpis(tasks);
   renderTaskList(tasks);
   renderDeadlines(tasks);
@@ -423,9 +566,9 @@ function openEditModal(task) {
   dialogTitle.textContent = "Edit Task";
   document.getElementById("taskId").value = task.id;
   document.getElementById("taskTitle").value = task.title;
-  document.getElementById("taskDescription").value = task.description;
-  document.getElementById("taskPriority").value = task.priority;
-  document.getElementById("taskDueDate").value = task.dueDate;
+  document.getElementById("taskDescription").value = task.description || "";
+  document.getElementById("taskPriority").value = task.priority || "medium";
+  document.getElementById("taskDueDate").value = task.dueDate || toDateInputValue(new Date());
   taskDialog.showModal();
 }
 
@@ -443,80 +586,70 @@ function getFormValues() {
   };
 }
 
-function isValidTask(values) {
-  if (!values.title) {
-    alert("Please enter a task title.");
-    return false;
-  }
-  if (!values.description) {
-    alert("Please enter a description.");
-    return false;
-  }
-  if (!values.priority) {
-    alert("Please choose a priority.");
-    return false;
-  }
-  if (!values.dueDate) {
-    alert("Please choose a due date.");
-    return false;
-  }
-  return true;
-}
-
-function addOrUpdateTask(event) {
+async function addOrUpdateTask(event) {
   event.preventDefault();
   const values = getFormValues();
-  if (!isValidTask(values)) return;
+  if (!values.title) return alert("Please enter a task title.");
 
-  const tasks = loadTasks();
-
-  if (values.id) {
-    const index = tasks.findIndex((t) => t.id === values.id);
-    if (index !== -1) {
-      tasks[index].title = values.title;
-      tasks[index].description = values.description;
-      tasks[index].priority = values.priority;
-      tasks[index].dueDate = values.dueDate;
+  try {
+    if (values.id) {
+      await fetch(`/api/tasks/${values.id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(values),
+      });
+    } else {
+      await fetch("/api/tasks", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(values),
+      });
     }
-  } else {
-    tasks.push({
-      id: createTaskId(),
-      title: values.title,
-      description: values.description,
-      priority: values.priority,
-      dueDate: values.dueDate,
-      completed: false,
+
+    closeTaskModal();
+    await renderAllTasks();
+  } catch (err) {
+    console.error("Failed to save task:", err);
+  }
+}
+
+async function toggleComplete(taskId) {
+  const task = globalTasks.find((t) => t.id === taskId);
+  if (!task) return;
+
+  try {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ completed: !task.completed }),
     });
-  }
-
-  saveTasks(tasks);
-  closeTaskModal();
-  renderAllTasks();
-}
-
-function toggleComplete(taskId) {
-  const tasks = loadTasks();
-  const index = tasks.findIndex((t) => t.id === taskId);
-  if (index !== -1) {
-    tasks[index].completed = !tasks[index].completed;
-    saveTasks(tasks);
-    renderAllTasks();
+    await renderAllTasks();
+  } catch (err) {
+    console.error("Failed to toggle task completion:", err);
   }
 }
 
-function deleteTask(taskId) {
+async function deleteTask(taskId) {
   const confirmed = confirm("Delete this task? This cannot be undone.");
   if (!confirmed) return;
 
-  const tasks = loadTasks().filter((t) => t.id !== taskId);
-  saveTasks(tasks);
-  renderAllTasks();
+  try {
+    await fetch(`/api/tasks/${taskId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+    await renderAllTasks();
+  } catch (err) {
+    console.error("Failed to delete task:", err);
+  }
 }
 
 if (addTaskBtn) addTaskBtn.addEventListener("click", openAddModal);
 if (cancelTaskBtn) cancelTaskBtn.addEventListener("click", closeTaskModal);
 if (taskForm) taskForm.addEventListener("submit", addOrUpdateTask);
-if (searchInput) searchInput.addEventListener("input", renderAllTasks);
+if (searchInput) searchInput.addEventListener("input", () => {
+  renderTaskList(globalTasks);
+});
 
 if (taskListEl) {
   taskListEl.addEventListener("click", function (event) {
@@ -530,7 +663,7 @@ if (taskListEl) {
 
     if (action === "complete") toggleComplete(taskId);
     if (action === "edit") {
-      const task = loadTasks().find((t) => t.id === taskId);
+      const task = globalTasks.find((t) => t.id === taskId);
       if (task) openEditModal(task);
     }
     if (action === "delete") deleteTask(taskId);
@@ -538,7 +671,7 @@ if (taskListEl) {
 }
 
 // =========================================================
-// PHASE 4: SMART REVISION QUEUE (SPACED REPETITION)
+// PHASE 4 & 6: SMART REVISION QUEUE (SPACED REPETITION)
 // =========================================================
 
 let globalRevisions = [];
@@ -553,13 +686,14 @@ const revCountUpcoming = document.getElementById("revCountUpcoming");
 async function loadRevisionQueue() {
   if (!revisionQueueList) return;
   try {
-    const res = await fetch("/api/revisions?status=pending");
+    const res = await fetch("/api/revisions?status=pending", {
+      headers: getAuthHeaders(),
+    });
     const json = await res.json();
 
     if (json.success && Array.isArray(json.data)) {
       globalRevisions = json.data;
 
-      // Calculate counts
       const overdue = globalRevisions.filter((r) => r.is_overdue).length;
       const dueToday = globalRevisions.filter((r) => r.is_due_today).length;
       const upcoming = globalRevisions.filter((r) => r.is_upcoming).length;
@@ -573,9 +707,6 @@ async function loadRevisionQueue() {
     }
   } catch (err) {
     console.error("Failed to load revision queue:", err);
-    if (revisionQueueList) {
-      revisionQueueList.innerHTML = '<p class="empty-note">Could not load revision queue.</p>';
-    }
   }
 }
 
@@ -652,7 +783,6 @@ function getRecallLevelLocal(score) {
   return "Weak";
 }
 
-// Filter Tab Click Handlers
 document.querySelectorAll(".revision-filter-tabs .filter-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".revision-filter-tabs .filter-tab").forEach((t) => t.classList.remove("is-active"));
@@ -666,6 +796,7 @@ window.markRevisionCompleted = async function (revisionId) {
   try {
     const res = await fetch(`/api/revisions/${revisionId}/complete`, {
       method: "POST",
+      headers: getAuthHeaders(),
     });
     const json = await res.json();
     if (json.success) {
@@ -688,7 +819,6 @@ let selectedTopic = null;
 let recallTimerInterval = null;
 let recallStartTime = null;
 
-// DOM Elements for Recall View
 const topicSelect = document.getElementById("topicSelect");
 const recallPrepCard = document.getElementById("recallPrepCard");
 const recallActiveCard = document.getElementById("recallActiveCard");
@@ -711,7 +841,6 @@ const recallForm = document.getElementById("recallForm");
 const submitRecallBtn = document.getElementById("submitRecallBtn");
 const cancelActiveRecallBtn = document.getElementById("cancelActiveRecallBtn");
 
-// Results Elements
 const resultScoreDonut = document.getElementById("resultScoreDonut");
 const resultScoreVal = document.getElementById("resultScoreVal");
 const resultLevelPill = document.getElementById("resultLevelPill");
@@ -733,19 +862,17 @@ const revealedNotesText = document.getElementById("revealedNotesText");
 const retryRecallBtn = document.getElementById("retryRecallBtn");
 const topicHistoryTbody = document.getElementById("topicHistoryTbody");
 
-// Topic Modal Elements
 const topicDialog = document.getElementById("topicDialog");
 const topicForm = document.getElementById("topicForm");
 const openNewTopicModalBtn = document.getElementById("openNewTopicModalBtn");
 const openAddTopicBtn = document.getElementById("openAddTopicBtn");
 const cancelTopicBtn = document.getElementById("cancelTopicBtn");
 
-/**
- * Fetch topics from backend API
- */
 async function fetchTopics() {
   try {
-    const res = await fetch("/api/topics");
+    const res = await fetch("/api/topics", {
+      headers: getAuthHeaders(),
+    });
     const json = await res.json();
     if (json.success && Array.isArray(json.data)) {
       globalTopics = json.data;
@@ -758,9 +885,6 @@ async function fetchTopics() {
   }
 }
 
-/**
- * Load topics dropdown in Recall view
- */
 async function loadTopicsForRecall(selectTopicId = null) {
   await fetchTopics();
 
@@ -786,14 +910,10 @@ async function loadTopicsForRecall(selectTopicId = null) {
   }
 }
 
-/**
- * Set current active topic and render preview
- */
 function setSelectedTopic(topicId) {
   selectedTopic = globalTopics.find((t) => t.id === topicId) || globalTopics[0];
   if (!selectedTopic) return;
 
-  // Render Prep Card
   if (prepSubjectBadge) prepSubjectBadge.textContent = selectedTopic.subject || "General";
   if (prepConceptCount) {
     const count = Array.isArray(selectedTopic.key_concepts) ? selectedTopic.key_concepts.length : 0;
@@ -803,12 +923,10 @@ function setSelectedTopic(topicId) {
   if (prepQuestionText) prepQuestionText.textContent = selectedTopic.question;
   if (prepNotesContent) prepNotesContent.textContent = selectedTopic.notes;
 
-  // Show Prep Card, hide Active and Result
   recallPrepCard.hidden = false;
   recallActiveCard.hidden = true;
   recallResultCard.hidden = true;
 
-  // Load history for this topic
   loadTopicHistory(selectedTopic.id);
 }
 
@@ -818,43 +936,27 @@ if (topicSelect) {
   });
 }
 
-/**
- * Start Active Recall Session (HIDES notes completely)
- */
 function startRecallSession() {
   if (!selectedTopic) return;
 
-  // 1. Hide study notes completely
   recallPrepCard.hidden = true;
   recallResultCard.hidden = true;
 
-  // 2. Show Active Recall form
   recallActiveCard.hidden = false;
   activeTopicTitle.textContent = selectedTopic.title;
   activeQuestionText.textContent = selectedTopic.question;
 
-  // 3. Clear textarea and alert
   studentAnswerInput.value = "";
   updateWordCount("");
   hideRecallAlert();
 
-  // 4. Start live timer
   startTimer();
-
-  // 5. Focus textarea
   studentAnswerInput.focus();
   recallActiveCard.scrollIntoView({ behavior: "smooth" });
 }
 
-if (startRecallBtn) {
-  startRecallBtn.addEventListener("click", startRecallSession);
-}
-
-if (retryRecallBtn) {
-  retryRecallBtn.addEventListener("click", () => {
-    startRecallSession();
-  });
-}
+if (startRecallBtn) startRecallBtn.addEventListener("click", startRecallSession);
+if (retryRecallBtn) retryRecallBtn.addEventListener("click", startRecallSession);
 
 if (cancelActiveRecallBtn) {
   cancelActiveRecallBtn.addEventListener("click", () => {
@@ -865,9 +967,6 @@ if (cancelActiveRecallBtn) {
   });
 }
 
-/**
- * Timer helpers
- */
 function startTimer() {
   stopTimer();
   recallStartTime = Date.now();
@@ -887,9 +986,6 @@ function stopTimer() {
   }
 }
 
-/**
- * Live character/word counter
- */
 function updateWordCount(text) {
   if (!recallWordCount) return;
   const trimmed = text.trim();
@@ -919,9 +1015,6 @@ function hideRecallAlert() {
   recallAlert.textContent = "";
 }
 
-/**
- * Submit Recall Evaluation to Backend
- */
 if (recallForm) {
   recallForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -932,7 +1025,6 @@ if (recallForm) {
 
     const answer = studentAnswerInput.value.trim();
 
-    // Client-side validation
     if (!answer) {
       showRecallAlert("Please write your recalled answer before submitting.");
       studentAnswerInput.focus();
@@ -945,14 +1037,13 @@ if (recallForm) {
       return;
     }
 
-    // Set loading state
     hideRecallAlert();
     setSubmitLoading(true);
 
     try {
       const response = await fetch("/api/recall/evaluate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           topic_id: selectedTopic.id,
           student_answer: answer,
@@ -965,11 +1056,8 @@ if (recallForm) {
         throw new Error(data.error || "Evaluation failed. Please try again.");
       }
 
-      // Stop timer & display results
       stopTimer();
       displayEvaluationResult(data);
-
-      // Refresh revision queue in background
       loadRevisionQueue();
     } catch (err) {
       console.error("Submission error:", err);
@@ -990,14 +1078,10 @@ function setSubmitLoading(isLoading) {
   if (btnSpinner) btnSpinner.hidden = !isLoading;
 }
 
-/**
- * Render Recall Evaluation Results
- */
 function displayEvaluationResult(result) {
   recallActiveCard.hidden = true;
   recallResultCard.hidden = false;
 
-  // 1. Score & Level
   const score = result.score;
   const level = result.level || "Needs Improvement";
 
@@ -1005,7 +1089,6 @@ function displayEvaluationResult(result) {
   resultLevelPill.textContent = getLevelIcon(level) + " " + level;
   resultLevelPill.className = `level-pill level-${levelToCssClass(level)}`;
 
-  // Color donut border
   if (resultScoreDonut) {
     resultScoreDonut.style.borderColor = getLevelColor(level);
   }
@@ -1013,16 +1096,13 @@ function displayEvaluationResult(result) {
   resultTopicTitle.textContent = `${result.topic_title || selectedTopic.title} — Result`;
   resultDate.textContent = `Completed on ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
-  // 2. Phase 4: Next Revision Banner
   if (result.next_revision && resultNextRevisionText) {
     const rev = result.next_revision;
     resultNextRevisionText.textContent = `Next revision: ${rev.label} (${rev.revision_date})`;
   }
 
-  // 3. Feedback
   resultFeedbackText.textContent = result.feedback || "Evaluation complete.";
 
-  // 4. Concepts Breakdown
   renderConceptList(correctConceptsList, result.correct_concepts, "No fully correct concepts identified.", "correct");
   renderConceptList(partialConceptsList, result.partial_concepts, "No partial concepts.", "partial");
   renderConceptList(missedConceptsList, result.missed_concepts, "None! All concepts recalled.", "missed");
@@ -1031,7 +1111,6 @@ function displayEvaluationResult(result) {
   partialCount.textContent = (result.partial_concepts || []).length;
   missedCount.textContent = (result.missed_concepts || []).length;
 
-  // 5. Suggestions
   if (suggestionsList) {
     suggestionsList.innerHTML = "";
     const suggestions = result.suggestions || [];
@@ -1046,7 +1125,6 @@ function displayEvaluationResult(result) {
     }
   }
 
-  // 6. Set up original notes toggle
   if (revealedNotesBox && revealedNotesText) {
     revealedNotesBox.hidden = true;
     revealedNotesText.textContent = selectedTopic.notes;
@@ -1055,10 +1133,7 @@ function displayEvaluationResult(result) {
     toggleNotesCompareBtn.textContent = "📖 View Original Notes";
   }
 
-  // 7. Refresh Topic History
   loadTopicHistory(selectedTopic.id);
-
-  // Scroll to results
   recallResultCard.scrollIntoView({ behavior: "smooth" });
 }
 
@@ -1102,7 +1177,6 @@ function getLevelIcon(level) {
   return "⚠️";
 }
 
-// Toggle Reveal Notes in Results
 if (toggleNotesCompareBtn) {
   toggleNotesCompareBtn.addEventListener("click", () => {
     if (!revealedNotesBox) return;
@@ -1122,13 +1196,12 @@ if (viewRevisionScheduleBtn) {
   });
 }
 
-/**
- * Load History for specific Topic
- */
 async function loadTopicHistory(topicId) {
   if (!topicHistoryTbody) return;
   try {
-    const res = await fetch(`/api/recall/history?topic_id=${topicId}`);
+    const res = await fetch(`/api/recall/history?topic_id=${topicId}`, {
+      headers: getAuthHeaders(),
+    });
     const json = await res.json();
     if (json.success && Array.isArray(json.data) && json.data.length > 0) {
       topicHistoryTbody.innerHTML = json.data
@@ -1199,14 +1272,12 @@ async function loadTopicsForSubjectsView() {
     .join("");
 }
 
-// Global helper for card clicks
 window.jumpToRecallTopic = function (topicId) {
   switchView("recall");
   if (topicSelect) topicSelect.value = topicId;
   setSelectedTopic(topicId);
 };
 
-// Add Topic Modal Logic
 function openTopicModal() {
   if (topicForm) topicForm.reset();
   if (topicDialog) topicDialog.showModal();
@@ -1236,7 +1307,7 @@ if (topicForm) {
     try {
       const res = await fetch("/api/topics", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ title, subject, question, notes }),
       });
 
@@ -1258,7 +1329,6 @@ if (topicForm) {
 // PHASE 5: PERSONALIZED LEARNING ANALYTICS FRONTEND
 // =========================================================
 
-// KPI Elements
 const analyticsOverallScore = document.getElementById("analyticsOverallScore");
 const analyticsOverallLevel = document.getElementById("analyticsOverallLevel");
 const analyticsAvgRecall = document.getElementById("analyticsAvgRecall");
@@ -1268,7 +1338,6 @@ const analyticsMasteryRatioMeta = document.getElementById("analyticsMasteryRatio
 const analyticsRevCompletion = document.getElementById("analyticsRevCompletion");
 const analyticsActiveRevsMeta = document.getElementById("analyticsActiveRevsMeta");
 
-// Insights & Visualizations
 const analyticsInsightsContainer = document.getElementById("analyticsInsightsContainer");
 const recallTrendContainer = document.getElementById("recallTrendContainer");
 const subjectsAnalyticsList = document.getElementById("subjectsAnalyticsList");
@@ -1280,7 +1349,7 @@ const allHistoryTbody = document.getElementById("allHistoryTbody");
 async function loadLearningAnalyticsDashboard() {
   try {
     // 1. Overview KPIs
-    const overviewRes = await fetch("/api/analytics/overview");
+    const overviewRes = await fetch("/api/analytics/overview", { headers: getAuthHeaders() });
     const overviewJson = await overviewRes.json();
 
     if (overviewJson.success && overviewJson.data) {
@@ -1307,7 +1376,6 @@ async function loadLearningAnalyticsDashboard() {
         analyticsActiveRevsMeta.textContent = `${d.completed_revisions} completed / ${d.total_scheduled_revisions} scheduled`;
       }
 
-      // Strongest topics
       if (analyticsStrongestList) {
         if (Array.isArray(d.strongest_topics) && d.strongest_topics.length > 0) {
           analyticsStrongestList.innerHTML = d.strongest_topics
@@ -1329,7 +1397,6 @@ async function loadLearningAnalyticsDashboard() {
         }
       }
 
-      // Weakest topics
       if (analyticsWeakestList) {
         if (Array.isArray(d.weakest_topics) && d.weakest_topics.length > 0) {
           analyticsWeakestList.innerHTML = d.weakest_topics
@@ -1353,7 +1420,7 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 2. Personalized Learning Insights
-    const insightsRes = await fetch("/api/analytics/insights");
+    const insightsRes = await fetch("/api/analytics/insights", { headers: getAuthHeaders() });
     const insightsJson = await insightsRes.json();
     if (analyticsInsightsContainer) {
       if (insightsJson.success && Array.isArray(insightsJson.data) && insightsJson.data.length > 0) {
@@ -1379,7 +1446,7 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 3. Recall Performance Trend Visualizer
-    const trendRes = await fetch("/api/analytics/recall-trend");
+    const trendRes = await fetch("/api/analytics/recall-trend", { headers: getAuthHeaders() });
     const trendJson = await trendRes.json();
     if (recallTrendContainer) {
       if (trendJson.success && Array.isArray(trendJson.data) && trendJson.data.length > 0) {
@@ -1406,7 +1473,7 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 4. Subject-Wise Mastery Breakdown
-    const subjRes = await fetch("/api/analytics/subjects");
+    const subjRes = await fetch("/api/analytics/subjects", { headers: getAuthHeaders() });
     const subjJson = await subjRes.json();
     if (subjectsAnalyticsList) {
       if (subjJson.success && Array.isArray(subjJson.data) && subjJson.data.length > 0) {
@@ -1434,7 +1501,7 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 5. Topic Mastery Table
-    const topicsRes = await fetch("/api/analytics/topics");
+    const topicsRes = await fetch("/api/analytics/topics", { headers: getAuthHeaders() });
     const topicsJson = await topicsRes.json();
     if (topicMasteryTbody) {
       if (topicsJson.success && Array.isArray(topicsJson.data) && topicsJson.data.length > 0) {
@@ -1466,7 +1533,7 @@ async function loadLearningAnalyticsDashboard() {
     }
 
     // 6. Recent Recall Evaluations History
-    const historyRes = await fetch("/api/recall/history");
+    const historyRes = await fetch("/api/recall/history", { headers: getAuthHeaders() });
     const historyJson = await historyRes.json();
     if (allHistoryTbody) {
       if (historyJson.success && Array.isArray(historyJson.data) && historyJson.data.length > 0) {
@@ -1499,6 +1566,15 @@ async function loadLearningAnalyticsDashboard() {
 }
 
 // ===== Initial App Boot =====
-renderAllTasks();
-loadTopicsForRecall();
-loadRevisionQueue();
+async function initializeDashboardData() {
+  await renderAllTasks();
+  await loadTopicsForRecall();
+  await loadRevisionQueue();
+}
+
+// Check authentication state on page load
+verifyAuthOrPrompt().then((isAuthenticated) => {
+  if (isAuthenticated) {
+    initializeDashboardData();
+  }
+});

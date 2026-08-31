@@ -1,6 +1,6 @@
-# StudyPulse — Student Productivity Dashboard, AI Recall & Personalized Analytics
+# StudyPulse — Multi-User Student Productivity, AI Active Recall & Personalized Analytics
 
-StudyPulse is a comprehensive student learning and productivity system combining active task management, AI-powered active recall evaluation, automated spaced repetition revision scheduling, and personalized learning analytics.
+StudyPulse is a comprehensive multi-user student learning and productivity system combining active task management, AI-powered active recall evaluation, automated spaced repetition revision scheduling, personalized learning analytics, and secure multi-user data isolation.
 
 ---
 
@@ -41,6 +41,15 @@ StudyPulse is a comprehensive student learning and productivity system combining
 - **Personalized Deterministic Insights**: Actionable, data-driven recommendations highlighting strengths, weak areas, revision discipline, and performance trajectories without external AI dependencies.
 - **Empty-State Resiliency**: Fully responsive and graceful empty-state handling across all analytics components.
 
+### Phase 6: Multi-User Authentication & Personal Data Isolation
+- **User Registration & Login**: Full Name, Email, and Password with strict input validation and unique email enforcement.
+- **Cryptographic Security**: Password hashing using Node.js native `crypto.pbkdf2Sync` (SHA-512 with 10,000 iterations and 16-byte random salt) and timing-safe password verification (`crypto.timingSafeEqual`).
+- **Complete Personal Data Isolation**:
+  - Tasks, private study topics, recall attempts, revision schedules, and learning analytics are strictly isolated by `user_id`.
+  - Cross-user data modification and queries are prevented at the database and API layer.
+- **Token-Based Sessions**: Secure session tokens with 7-day expiration and instant invalidation on logout.
+- **Uniform Error Handling**: Safe authentication error messages prevent user enumeration. Passwords and hashes are never exposed in API responses.
+
 ---
 
 ## 📐 Analytics Formulas & Classifications
@@ -70,6 +79,18 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 
 ## 📡 REST API Endpoints
 
+### Authentication (Phase 6)
+- `POST /api/auth/register` — Register a new student account (`{ name, email, password }`).
+- `POST /api/auth/login` — Sign in with email and password (`{ email, password }`).
+- `POST /api/auth/logout` — Invalidate the current session token.
+- `GET /api/auth/me` — Retrieve current authenticated user profile.
+
+### Tasks Management (Phase 6)
+- `GET /api/tasks` — List tasks owned by the authenticated user.
+- `POST /api/tasks` — Create a new task.
+- `PUT /api/tasks/:id` — Update a task (title, description, priority, due date, completion).
+- `DELETE /api/tasks/:id` — Delete a user task.
+
 ### Learning Analytics (Phase 5)
 - `GET /api/analytics/overview` — High-level learning analytics, overall learning score, mastery counts, and top 5 strongest/weakest topics.
 - `GET /api/analytics/recall-trend` — Chronological daily recall performance (attempts, average, max, min scores).
@@ -79,30 +100,30 @@ $$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\te
 - `GET /api/analytics/insights` — Personalized deterministic insights derived from database metrics.
 
 ### Spaced Repetition & Revisions (Phase 4)
-- `GET /api/revisions` — Get all active revision schedules (`?status=pending|completed|all`).
+- `GET /api/revisions` — Get all active revision schedules for the user (`?status=pending|completed|all`).
 - `GET /api/revisions/due` — Get revisions due today or overdue.
 - `POST /api/revisions/:id/complete` — Mark a revision as completed.
 - `GET /api/revisions/:topicId` — Get revision history for a specific topic.
 
 ### Active Recall & Topics (Phase 1–3)
-- `GET /api/topics` — List all study topics.
+- `GET /api/topics` — List system topics and user's private topics.
 - `GET /api/topics/:id` — Retrieve topic details and notes.
 - `POST /api/topics` — Create a new study topic.
 - `POST /api/recall/evaluate` — Submit recalled answer for evaluation and automatic revision scheduling.
-- `GET /api/recall/history` — Get past recall attempts history.
+- `GET /api/recall/history` — Get past recall attempts history for the user.
 - `GET /api/stats` — Summary metrics for dashboard KPI compatibility.
 
 ---
 
 ## 🧪 Testing
 
-To run the complete automated test suite (47 tests across all 5 phases):
+To run the complete automated test suite (57 tests across all 6 phases):
 
 ```bash
 npm test
 ```
 
-All 47 tests execute in under 1 second using Node.js native test runner (`node:test`).
+All 57 tests execute in ~1 second using Node.js native test runner (`node:test`).
 
 ---
 
@@ -120,3 +141,6 @@ All 47 tests execute in under 1 second using Node.js native test runner (`node:t
 
 3. **Open the web dashboard**:
    Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+   - If not signed in, create a new account or sign in.
+   - Try creating tasks and completing recall sessions.
+   - Register a second account in an incognito window to verify user data isolation.

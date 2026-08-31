@@ -8,6 +8,7 @@ const {
   getIntervalDescription,
   getRevisionUrgency 
 } = require("../scheduler");
+const analytics = require("../analytics");
 
 /**
  * GET /api/topics
@@ -312,9 +313,97 @@ router.get("/revisions/:topicId", (req, res) => {
   }
 });
 
+// =========================================================
+// PHASE 5: PERSONALIZED LEARNING ANALYTICS APIS
+// =========================================================
+
+/**
+ * GET /api/analytics/overview
+ * Returns comprehensive learning analytics overview.
+ */
+router.get("/analytics/overview", (req, res) => {
+  try {
+    const overview = analytics.getAnalyticsOverview(db.getDatabase());
+    res.json({ success: true, data: overview });
+  } catch (err) {
+    console.error("Error computing analytics overview:", err);
+    res.status(500).json({ error: "Failed to retrieve learning analytics overview." });
+  }
+});
+
+/**
+ * GET /api/analytics/recall-trend
+ * Returns recall performance aggregated chronologically over time.
+ */
+router.get("/analytics/recall-trend", (req, res) => {
+  try {
+    const trend = analytics.getRecallTrend(db.getDatabase());
+    res.json({ success: true, count: trend.length, data: trend });
+  } catch (err) {
+    console.error("Error computing recall trend:", err);
+    res.status(500).json({ error: "Failed to retrieve recall trend." });
+  }
+});
+
+/**
+ * GET /api/analytics/topics
+ * Returns mastery metrics and revision statuses for every topic.
+ */
+router.get("/analytics/topics", (req, res) => {
+  try {
+    const topics = analytics.getTopicMasteryAnalytics(db.getDatabase());
+    res.json({ success: true, count: topics.length, data: topics });
+  } catch (err) {
+    console.error("Error computing topic analytics:", err);
+    res.status(500).json({ error: "Failed to retrieve topic analytics." });
+  }
+});
+
+/**
+ * GET /api/analytics/subjects
+ * Returns subject-wise performance breakdown.
+ */
+router.get("/analytics/subjects", (req, res) => {
+  try {
+    const subjects = analytics.getSubjectAnalytics(db.getDatabase());
+    res.json({ success: true, count: subjects.length, data: subjects });
+  } catch (err) {
+    console.error("Error computing subject analytics:", err);
+    res.status(500).json({ error: "Failed to retrieve subject analytics." });
+  }
+});
+
+/**
+ * GET /api/analytics/revisions
+ * Returns detailed revision scheduling analytics and completion trends.
+ */
+router.get("/analytics/revisions", (req, res) => {
+  try {
+    const revAnalytics = analytics.getRevisionAnalytics(db.getDatabase());
+    res.json({ success: true, data: revAnalytics });
+  } catch (err) {
+    console.error("Error computing revision analytics:", err);
+    res.status(500).json({ error: "Failed to retrieve revision analytics." });
+  }
+});
+
+/**
+ * GET /api/analytics/insights
+ * Returns personalized deterministic insights derived from learning statistics.
+ */
+router.get("/analytics/insights", (req, res) => {
+  try {
+    const insights = analytics.generateLearningInsights(db.getDatabase());
+    res.json({ success: true, count: insights.length, data: insights });
+  } catch (err) {
+    console.error("Error generating learning insights:", err);
+    res.status(500).json({ error: "Failed to generate learning insights." });
+  }
+});
+
 /**
  * GET /api/stats
- * Overview metrics for dashboard & progress tabs, enhanced with spaced repetition stats.
+ * Overview metrics for dashboard & progress tabs (preserved for backward compatibility).
  */
 router.get("/stats", (req, res) => {
   try {

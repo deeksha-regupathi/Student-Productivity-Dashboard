@@ -1,6 +1,6 @@
-# StudyPulse — Student Productivity Dashboard & Active Recall System
+# StudyPulse — Student Productivity Dashboard, AI Recall & Personalized Analytics
 
-StudyPulse is a student productivity dashboard combining active task management, AI-powered active recall evaluation, and smart spaced repetition revision scheduling.
+StudyPulse is a comprehensive student learning and productivity system combining active task management, AI-powered active recall evaluation, automated spaced repetition revision scheduling, and personalized learning analytics.
 
 ---
 
@@ -9,7 +9,7 @@ StudyPulse is a student productivity dashboard combining active task management,
 ### Phase 1 & 2: Productivity Dashboard & Task Management
 - **Dashboard Overview**: Key performance indicators (Total Tasks, Completed, Pending, Focus Streak).
 - **Task Management**: Create, edit, prioritize (Low, Medium, High), set due dates, mark as completed, and delete tasks.
-- **Weekly Study Progress**: Visual subject-by-subject hours tracking.
+- **Weekly Study Progress**: Visual subject-by-subject study hours tracking.
 - **Upcoming Deadlines**: Real-time due date tracking (Due today, Overdue, Due tomorrow, etc.).
 
 ### Phase 3: AI-Powered Active Recall Practice & Evaluation
@@ -26,59 +26,83 @@ StudyPulse is a student productivity dashboard combining active task management,
   - **Feedback & Suggestions**: Actionable advice on what to review.
 
 ### Phase 4: Smart Revision & Spaced Repetition
-- **Automatic Scheduling**: Calculates the next revision date automatically upon recall submission without requiring manual student input:
-  - **Score 0–49%** → Next revision in **1 day**
-  - **Score 50–69%** → Next revision in **2 days**
-  - **Score 70–84%** → Next revision in **4 days**
-  - **Score 85–100%** → Next revision in **7 days**
-- **Dashboard Revision Queue**:
-  - Filterable by **All**, **Overdue**, **Due Today**, and **Upcoming**.
-  - Quick action buttons: **Revise Now** (launches directly into active recall for that topic) and **Complete** (marks revision finished).
-- **Spaced Analytics**:
-  - Strongest vs Weakest topics tracking.
-  - Due and completed revision counters.
-  - Full revision and recall attempt history.
+- **Automatic Scheduling**: Calculates next revision date automatically upon recall submission:
+  - **Score 0–49% (Weak)** → Next revision in **1 day**
+  - **Score 50–69% (Needs Improvement)** → Next revision in **2 days**
+  - **Score 70–84% (Good)** → Next revision in **4 days**
+  - **Score 85–100% (Excellent)** → Next revision in **7 days**
+- **Dashboard Revision Queue**: Filterable by **All**, **Overdue**, **Due Today**, and **Upcoming** with **Revise Now** and **Complete** actions.
+
+### Phase 5: Personalized Learning Analytics & Progress Dashboard
+- **Overall Learning Analytics**: Comprehensive metrics on topics, recall accuracy, revisions, and composite learning score.
+- **Recall Performance Trend**: Chronological tracking of average, highest, and lowest recall scores over time.
+- **Topic Mastery Matrix**: Topic-level mastery tracking taking both historical average and recency into account.
+- **Subject-Wise Analytics**: Aggregate performance, topic count, and revision statuses by subject category.
+- **Personalized Deterministic Insights**: Actionable, data-driven recommendations highlighting strengths, weak areas, revision discipline, and performance trajectories without external AI dependencies.
+- **Empty-State Resiliency**: Fully responsive and graceful empty-state handling across all analytics components.
 
 ---
 
-## 🛠 Tech Stack & Architecture
+## 📐 Analytics Formulas & Classifications
 
-- **Backend**: Node.js 24 + Express 5
-- **Database**: SQLite with `node:sqlite` (zero external binary dependencies)
-- **Frontend**: Vanilla JavaScript (ES6+), HTML5, CSS3 with responsive layouts
-- **Testing**: Built-in `node:test` & `node:assert` runner
+### 1. Overall Learning Score (0–100)
+$$\text{Overall Learning Score} = 0.50 \times (\text{Average Recall Score}) + 0.30 \times (\text{Average Topic Mastery}) + 0.20 \times (\text{Revision Completion Rate})$$
+*If no recall attempts have been completed yet, the overall score defaults safely to `0`.*
+
+### 2. Topic Mastery Calculation (0–100)
+- **Multiple Attempts**: Weighted formula combining recency and consistency:
+  $$\text{Mastery \%} = 0.60 \times (\text{Latest Score}) + 0.40 \times (\text{Average Score})$$
+- **Single Attempt**: $1.00 \times (\text{Latest Score})$
+- **Zero Attempts**: $0\%$
+
+### 3. Topic & Learning Mastery Levels
+| Score Range | Mastery Level |
+| :--- | :--- |
+| **85–100%** | **Mastered** |
+| **70–84%** | **Strong** |
+| **50–69%** | **Developing** |
+| **0–49%** | **Needs Attention** |
+
+### 4. Revision Completion Rate
+$$\text{Revision Completion Rate} = \left( \frac{\text{Completed Revisions}}{\text{Completed Revisions} + \text{Pending Revisions}} \right) \times 100$$
 
 ---
 
 ## 📡 REST API Endpoints
 
-### Active Recall & Topics
-- `GET /api/topics` — List all study topics.
-- `GET /api/topics/:id` — Retrieve topic details and notes.
-- `POST /api/topics` — Create a new study topic.
-- `POST /api/recall/evaluate` — Submit recalled answer for AI/concept evaluation and automatic revision scheduling.
-  - **Input**: `{ "topic_id": "topic-1", "student_answer": "..." }`
-  - **Output**: `{ "score": 85, "level": "Excellent", "correct_concepts": [...], "partial_concepts": [...], "missed_concepts": [...], "feedback": "...", "suggestions": [...], "next_revision": { "revision_date": "2026-09-07", "days_until_revision": 7, "label": "7 days from now" } }`
-- `GET /api/recall/history` — Get past recall attempts (optional query `?topic_id=...`).
-- `GET /api/stats` — Overall study metrics, topic mastery, and revision statistics.
+### Learning Analytics (Phase 5)
+- `GET /api/analytics/overview` — High-level learning analytics, overall learning score, mastery counts, and top 5 strongest/weakest topics.
+- `GET /api/analytics/recall-trend` — Chronological daily recall performance (attempts, average, max, min scores).
+- `GET /api/analytics/topics` — Complete topic mastery matrix with latest scores, average scores, and revision counts.
+- `GET /api/analytics/subjects` — Subject-wise aggregated analytics.
+- `GET /api/analytics/revisions` — Spaced repetition analytics, urgency breakdown, and daily completion history.
+- `GET /api/analytics/insights` — Personalized deterministic insights derived from database metrics.
 
 ### Spaced Repetition & Revisions (Phase 4)
 - `GET /api/revisions` — Get all active revision schedules (`?status=pending|completed|all`).
-- `GET /api/revisions/due` — Get revisions that are due today or overdue.
-- `POST /api/revisions/:id/complete` — Mark a revision schedule as completed.
+- `GET /api/revisions/due` — Get revisions due today or overdue.
+- `POST /api/revisions/:id/complete` — Mark a revision as completed.
 - `GET /api/revisions/:topicId` — Get revision history for a specific topic.
+
+### Active Recall & Topics (Phase 1–3)
+- `GET /api/topics` — List all study topics.
+- `GET /api/topics/:id` — Retrieve topic details and notes.
+- `POST /api/topics` — Create a new study topic.
+- `POST /api/recall/evaluate` — Submit recalled answer for evaluation and automatic revision scheduling.
+- `GET /api/recall/history` — Get past recall attempts history.
+- `GET /api/stats` — Summary metrics for dashboard KPI compatibility.
 
 ---
 
 ## 🧪 Testing
 
-To run the complete automated test suite (36 tests across integration, recall evaluation, database, and spaced repetition scheduling):
+To run the complete automated test suite (47 tests across all 5 phases):
 
 ```bash
 npm test
 ```
 
-All 36 tests execute in under 1 second using Node's native test runner.
+All 47 tests execute in under 1 second using Node.js native test runner (`node:test`).
 
 ---
 
@@ -94,18 +118,5 @@ All 36 tests execute in under 1 second using Node's native test runner.
    npm start
    ```
 
-3. **Access the web app**:
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## ⚙️ Configuration (Optional)
-
-The application runs fully offline out-of-the-box using the built-in intelligent concept-matching fallback engine. To enable external LLM evaluation, create a `.env` file from `.env.example`:
-
-```env
-PORT=3000
-GEMINI_API_KEY=your_gemini_api_key_here
-# or
-OPENAI_API_KEY=your_openai_api_key_here
-```
+3. **Open the web dashboard**:
+   Navigate to [http://localhost:3000](http://localhost:3000) in your browser.

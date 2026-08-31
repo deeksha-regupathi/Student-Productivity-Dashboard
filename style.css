@@ -320,7 +320,8 @@ a {
 }
 
 .kpi-card,
-.panel {
+.panel,
+.analytics-kpi-card {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -360,6 +361,20 @@ a {
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.section-title-row h3 {
+  font-size: 1.15rem;
+  font-weight: 500;
 }
 
 .panel-actions {
@@ -466,9 +481,10 @@ a {
 
 .empty-note {
   color: var(--muted);
-  padding: 14px 0;
+  padding: 16px 0;
   text-align: center;
   font-style: italic;
+  width: 100%;
 }
 
 .progress-row {
@@ -609,6 +625,241 @@ a {
   font-size: 1rem;
   font-weight: 500;
   border-radius: 12px;
+}
+
+/* =========================================================
+   PHASE 5: PERSONALIZED LEARNING ANALYTICS STYLES
+   ========================================================= */
+
+.analytics-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.analytics-kpi-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.kpi-overall-score {
+  background: #f4faf7;
+  border-left: 5px solid var(--accent);
+}
+
+.analytics-kpi-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.analytics-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 6px 0 2px;
+}
+
+.analytics-huge-score {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.analytics-score-max {
+  font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Insights Cards */
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.insight-card {
+  border-radius: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.insight-positive {
+  border-left: 4px solid var(--success);
+  background: #f0fdf4;
+}
+
+.insight-warning {
+  border-left: 4px solid var(--warn);
+  background: #fffdf2;
+}
+
+.insight-info {
+  border-left: 4px solid var(--info);
+  background: #f0f9ff;
+}
+
+.insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.insight-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.insight-message {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+/* Analytics Two-Column Grid */
+.analytics-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.analytics-col-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  background: #fff;
+}
+
+/* Trend Chart Visualizer */
+.trend-chart-container {
+  min-height: 190px;
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  padding: 20px 10px 10px;
+  overflow-x: auto;
+  border-bottom: 2px solid var(--line);
+}
+
+.trend-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 44px;
+}
+
+.trend-bar-score {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.trend-bar-track {
+  width: 24px;
+  height: 120px;
+  background: #f1ede4;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.trend-bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: height 0.3s ease;
+}
+
+.trend-bar-fill.fill-high {
+  background: var(--success);
+}
+
+.trend-bar-fill.fill-medium {
+  background: var(--info);
+}
+
+.trend-bar-fill.fill-low {
+  background: var(--warn);
+}
+
+.trend-date-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Subject Analytics List */
+.subjects-analytics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subject-stat-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fafaf7;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subject-stat-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subject-stat-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.subject-meta-tags {
+  display: flex;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Mastery Level Badges */
+.level-mastered {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.level-strong {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+}
+
+.level-developing {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.level-needs-attention {
+  background: #ffe4e6;
+  color: #be123c;
+  border: 1px solid #fecdd3;
 }
 
 /* =========================================================
@@ -1146,7 +1397,6 @@ a {
   font-weight: 500;
 }
 
-/* Recall Level Pills */
 .level-pill {
   display: inline-block;
   font-size: 0.8rem;
@@ -1197,7 +1447,6 @@ a {
   gap: 10px;
 }
 
-/* AI Feedback Summary Box */
 .feedback-card {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -1219,7 +1468,6 @@ a {
   color: #334155;
 }
 
-/* Concept Breakdown Columns */
 .concepts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1286,7 +1534,6 @@ a {
   padding: 6px 0;
 }
 
-/* Suggestions Section */
 .suggestions-card {
   background: #f0f9ff;
   border: 1px solid #bae6fd;
@@ -1316,7 +1563,6 @@ a {
   line-height: 1.4;
 }
 
-/* Revealed Original Notes Box */
 .revealed-notes-box {
   background: #fbfbf8;
   border: 1px dashed var(--accent);
@@ -1337,7 +1583,6 @@ a {
   white-space: pre-wrap;
 }
 
-/* Past Attempts Table */
 .topic-history-section {
   margin-top: 24px;
 }
@@ -1420,13 +1665,6 @@ a {
   justify-content: space-between;
   align-items: center;
   margin-top: 4px;
-}
-
-/* Stats Overview */
-.stats-overview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
 }
 
 /* Settings View */
@@ -1519,7 +1757,8 @@ a {
 @media (max-width: 1100px) {
   .kpi-grid,
   .dashboard-grid,
-  .stats-overview-grid,
+  .analytics-kpi-grid,
+  .analytics-two-col,
   .topic-strength-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1564,7 +1803,8 @@ a {
   .kpi-grid,
   .dashboard-grid,
   .deadline-item,
-  .stats-overview-grid,
+  .analytics-kpi-grid,
+  .analytics-two-col,
   .topic-strength-grid,
   .revision-queue-grid {
     grid-template-columns: 1fr;

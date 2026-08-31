@@ -45,15 +45,18 @@ const viewPanes = {
   recall: document.getElementById("viewRecall"),
   tasks: document.getElementById("viewDashboard"), // Tasks scrolls/focuses dashboard
   subjects: document.getElementById("viewSubjects"),
-  progress: document.getElementById("viewProgress"),
+  analytics: document.getElementById("viewAnalytics"),
+  progress: document.getElementById("viewAnalytics"), // Alias for backward compatibility
   settings: document.getElementById("viewSettings"),
 };
 
 function switchView(viewName) {
+  const normalizedView = viewName === "progress" ? "analytics" : viewName;
+
   // Update sidebar active link
   document.querySelectorAll(".sidebar-nav .nav-link").forEach((link) => {
     const linkView = link.getAttribute("data-view");
-    if (linkView === viewName) {
+    if (linkView === normalizedView || (normalizedView === "analytics" && linkView === "progress")) {
       link.classList.add("is-active");
     } else {
       link.classList.remove("is-active");
@@ -66,7 +69,7 @@ function switchView(viewName) {
   });
 
   // Show target view pane
-  const targetPane = viewPanes[viewName] || viewPanes.dashboard;
+  const targetPane = viewPanes[normalizedView] || viewPanes.dashboard;
   if (targetPane) {
     targetPane.hidden = false;
   }
@@ -75,15 +78,15 @@ function switchView(viewName) {
   closeSidebar();
 
   // Trigger view-specific data refresh
-  if (viewName === "dashboard") {
+  if (normalizedView === "dashboard") {
     loadRevisionQueue();
-  } else if (viewName === "recall") {
+  } else if (normalizedView === "recall") {
     loadTopicsForRecall();
-  } else if (viewName === "subjects") {
+  } else if (normalizedView === "subjects") {
     loadTopicsForSubjectsView();
-  } else if (viewName === "progress") {
-    loadRecallProgressStats();
-  } else if (viewName === "tasks") {
+  } else if (normalizedView === "analytics") {
+    loadLearningAnalyticsDashboard();
+  } else if (normalizedView === "tasks") {
     const tasksPanel = document.getElementById("tasksHeading");
     if (tasksPanel) {
       tasksPanel.scrollIntoView({ behavior: "smooth" });
@@ -667,7 +670,7 @@ window.markRevisionCompleted = async function (revisionId) {
     const json = await res.json();
     if (json.success) {
       await loadRevisionQueue();
-      await loadRecallProgressStats();
+      await loadLearningAnalyticsDashboard();
     } else {
       alert("Could not complete revision: " + (json.error || "Unknown error"));
     }
@@ -1078,23 +1081,24 @@ function renderConceptList(container, items, emptyText, type) {
 }
 
 function levelToCssClass(level) {
-  if (level === "Excellent") return "excellent";
-  if (level === "Good") return "good";
-  if (level === "Needs Improvement") return "needs-improvement";
+  const norm = String(level || "").toLowerCase().replace(/\s+/g, "-");
+  if (norm === "mastered" || norm === "excellent") return "excellent";
+  if (norm === "strong" || norm === "good") return "good";
+  if (norm === "developing" || norm === "needs-improvement") return "needs-improvement";
   return "weak";
 }
 
 function getLevelColor(level) {
-  if (level === "Excellent") return "#16a34a";
-  if (level === "Good") return "#0284c7";
-  if (level === "Needs Improvement") return "#d97706";
+  if (level === "Excellent" || level === "Mastered") return "#16a34a";
+  if (level === "Good" || level === "Strong") return "#0284c7";
+  if (level === "Needs Improvement" || level === "Developing") return "#d97706";
   return "#dc2626";
 }
 
 function getLevelIcon(level) {
-  if (level === "Excellent") return "🌟";
-  if (level === "Good") return "👍";
-  if (level === "Needs Improvement") return "📈";
+  if (level === "Excellent" || level === "Mastered") return "🌟";
+  if (level === "Good" || level === "Strong") return "👍";
+  if (level === "Needs Improvement" || level === "Developing") return "📈";
   return "⚠️";
 }
 
@@ -1251,102 +1255,223 @@ if (topicForm) {
 }
 
 // =========================================================
-// PROGRESS & ANALYTICS VIEW (PHASE 3 & 4)
+// PHASE 5: PERSONALIZED LEARNING ANALYTICS FRONTEND
 // =========================================================
 
-const statsTotalAttempts = document.getElementById("statsTotalAttempts");
-const statsAvgScore = document.getElementById("statsAvgScore");
-const statsDueRevisionsCount = document.getElementById("statsDueRevisionsCount");
-const statsCompletedRevisionsCount = document.getElementById("statsCompletedRevisionsCount");
-const strongestTopicsList = document.getElementById("strongestTopicsList");
-const weakestTopicsList = document.getElementById("weakestTopicsList");
-const upcomingRevisionsTbody = document.getElementById("upcomingRevisionsTbody");
+// KPI Elements
+const analyticsOverallScore = document.getElementById("analyticsOverallScore");
+const analyticsOverallLevel = document.getElementById("analyticsOverallLevel");
+const analyticsAvgRecall = document.getElementById("analyticsAvgRecall");
+const analyticsTotalAttemptsMeta = document.getElementById("analyticsTotalAttemptsMeta");
+const analyticsTopicsMastered = document.getElementById("analyticsTopicsMastered");
+const analyticsMasteryRatioMeta = document.getElementById("analyticsMasteryRatioMeta");
+const analyticsRevCompletion = document.getElementById("analyticsRevCompletion");
+const analyticsActiveRevsMeta = document.getElementById("analyticsActiveRevsMeta");
+
+// Insights & Visualizations
+const analyticsInsightsContainer = document.getElementById("analyticsInsightsContainer");
+const recallTrendContainer = document.getElementById("recallTrendContainer");
+const subjectsAnalyticsList = document.getElementById("subjectsAnalyticsList");
+const analyticsStrongestList = document.getElementById("analyticsStrongestList");
+const analyticsWeakestList = document.getElementById("analyticsWeakestList");
+const topicMasteryTbody = document.getElementById("topicMasteryTbody");
 const allHistoryTbody = document.getElementById("allHistoryTbody");
 
-async function loadRecallProgressStats() {
+async function loadLearningAnalyticsDashboard() {
   try {
-    const statsRes = await fetch("/api/stats");
-    const statsJson = await statsRes.json();
+    // 1. Overview KPIs
+    const overviewRes = await fetch("/api/analytics/overview");
+    const overviewJson = await overviewRes.json();
 
-    if (statsJson.success && statsJson.data) {
-      const d = statsJson.data;
-      if (statsTotalAttempts) statsTotalAttempts.textContent = d.total_attempts;
-      if (statsAvgScore) statsAvgScore.textContent = `${d.average_score}%`;
+    if (overviewJson.success && overviewJson.data) {
+      const d = overviewJson.data;
 
-      if (d.revisions) {
-        if (statsDueRevisionsCount) statsDueRevisionsCount.textContent = d.revisions.due_count || 0;
-        if (statsCompletedRevisionsCount) statsCompletedRevisionsCount.textContent = d.revisions.completed_count || 0;
+      if (analyticsOverallScore) analyticsOverallScore.textContent = d.overall_learning_score;
+      if (analyticsOverallLevel) {
+        analyticsOverallLevel.textContent = d.learning_level;
+        analyticsOverallLevel.className = `level-pill level-${levelToCssClass(d.learning_level)}`;
+      }
+
+      if (analyticsAvgRecall) analyticsAvgRecall.textContent = `${d.average_recall_score}%`;
+      if (analyticsTotalAttemptsMeta) {
+        analyticsTotalAttemptsMeta.textContent = `Across ${d.total_recall_attempts} recall session${d.total_recall_attempts === 1 ? '' : 's'}`;
+      }
+
+      if (analyticsTopicsMastered) analyticsTopicsMastered.textContent = d.mastered_topics_count;
+      if (analyticsMasteryRatioMeta) {
+        analyticsMasteryRatioMeta.textContent = `${d.mastered_topics_count} of ${d.total_topics} topics ≥ 85% mastery`;
+      }
+
+      if (analyticsRevCompletion) analyticsRevCompletion.textContent = `${d.revision_completion_rate}%`;
+      if (analyticsActiveRevsMeta) {
+        analyticsActiveRevsMeta.textContent = `${d.completed_revisions} completed / ${d.total_scheduled_revisions} scheduled`;
       }
 
       // Strongest topics
-      if (strongestTopicsList) {
+      if (analyticsStrongestList) {
         if (Array.isArray(d.strongest_topics) && d.strongest_topics.length > 0) {
-          strongestTopicsList.innerHTML = d.strongest_topics
-            .map(
-              (t) => `
+          analyticsStrongestList.innerHTML = d.strongest_topics
+            .map((t) => `
               <li class="strength-item">
-                <span><strong>${escapeHtml(t.title)}</strong> (${escapeHtml(t.subject)})</span>
-                <span class="level-pill level-excellent">${t.average_score}% Avg</span>
+                <div>
+                  <strong>${escapeHtml(t.title)}</strong>
+                  <span class="topic-concept-count" style="display:block;">${escapeHtml(t.subject)} · ${t.attempts_count} attempt${t.attempts_count === 1 ? '' : 's'}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="level-pill level-${levelToCssClass(t.mastery_level)}">${t.mastery_percentage}% (${t.mastery_level})</span>
+                  <button class="btn btn-small btn-primary" onclick="jumpToRecallTopic('${t.topic_id}')">Revise</button>
+                </div>
               </li>
-            `
-            )
+            `)
             .join("");
         } else {
-          strongestTopicsList.innerHTML = '<li class="empty-note">Complete recalls to see mastery topics.</li>';
+          analyticsStrongestList.innerHTML = '<li class="empty-note">Complete recalls to see mastery topics.</li>';
         }
       }
 
       // Weakest topics
-      if (weakestTopicsList) {
+      if (analyticsWeakestList) {
         if (Array.isArray(d.weakest_topics) && d.weakest_topics.length > 0) {
-          weakestTopicsList.innerHTML = d.weakest_topics
-            .map(
-              (t) => `
+          analyticsWeakestList.innerHTML = d.weakest_topics
+            .map((t) => `
               <li class="strength-item">
-                <span><strong>${escapeHtml(t.title)}</strong> (${escapeHtml(t.subject)})</span>
-                <span class="level-pill level-needs-improvement">${t.average_score}% Avg</span>
+                <div>
+                  <strong>${escapeHtml(t.title)}</strong>
+                  <span class="topic-concept-count" style="display:block;">${escapeHtml(t.subject)} · ${t.attempts_count} attempt${t.attempts_count === 1 ? '' : 's'}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span class="level-pill level-${levelToCssClass(t.mastery_level)}">${t.mastery_percentage}% (${t.mastery_level})</span>
+                  <button class="btn btn-small btn-primary" onclick="jumpToRecallTopic('${t.topic_id}')">Practice</button>
+                </div>
               </li>
-            `
-            )
+            `)
             .join("");
         } else {
-          weakestTopicsList.innerHTML = '<li class="empty-note">Complete recalls to see topics needing focus.</li>';
+          analyticsWeakestList.innerHTML = '<li class="empty-note">Complete recalls to see topics needing focus.</li>';
         }
       }
     }
 
-    // Load upcoming/due revisions table in Progress
-    const revsRes = await fetch("/api/revisions?status=pending");
-    const revsJson = await revsRes.json();
-    if (upcomingRevisionsTbody) {
-      if (revsJson.success && Array.isArray(revsJson.data) && revsJson.data.length > 0) {
-        upcomingRevisionsTbody.innerHTML = revsJson.data
-          .map(
-            (r) => `
-            <tr>
-              <td><strong>${escapeHtml(r.topic_title || r.topic_id)}</strong></td>
-              <td><span class="subject-badge">${escapeHtml(r.topic_subject || "General")}</span></td>
-              <td>${r.score}%</td>
-              <td>${r.revision_date}</td>
-              <td><span class="urgency-badge urgency-${r.urgency}">${r.urgency.replace("_", " ")}</span></td>
-              <td>
-                <button class="btn btn-small btn-primary" onclick="jumpToRecallTopic('${r.topic_id}')">Revise</button>
-              </td>
-            </tr>
-          `
-          )
+    // 2. Personalized Learning Insights
+    const insightsRes = await fetch("/api/analytics/insights");
+    const insightsJson = await insightsRes.json();
+    if (analyticsInsightsContainer) {
+      if (insightsJson.success && Array.isArray(insightsJson.data) && insightsJson.data.length > 0) {
+        analyticsInsightsContainer.innerHTML = insightsJson.data
+          .map((ins) => {
+            const severityClass = ins.severity === "positive" ? "insight-positive" : ins.severity === "warning" ? "insight-warning" : "insight-info";
+            const icon = ins.severity === "positive" ? "🌟" : ins.severity === "warning" ? "⚠️" : "💡";
+
+            return `
+              <div class="insight-card ${severityClass}">
+                <div class="insight-header">
+                  <span>${icon}</span>
+                  <h4 class="insight-title">${escapeHtml(ins.title)}</h4>
+                </div>
+                <p class="insight-message">${escapeHtml(ins.message)}</p>
+              </div>
+            `;
+          })
           .join("");
       } else {
-        upcomingRevisionsTbody.innerHTML = '<tr><td colspan="6" class="empty-note">No pending revision schedules.</td></tr>';
+        analyticsInsightsContainer.innerHTML = '<p class="empty-note">No learning insights available yet.</p>';
       }
     }
 
-    // Load recent recall attempts history
+    // 3. Recall Performance Trend Visualizer
+    const trendRes = await fetch("/api/analytics/recall-trend");
+    const trendJson = await trendRes.json();
+    if (recallTrendContainer) {
+      if (trendJson.success && Array.isArray(trendJson.data) && trendJson.data.length > 0) {
+        recallTrendContainer.innerHTML = trendJson.data
+          .map((item) => {
+            const heightPct = Math.max(10, Math.min(100, item.average_score));
+            const fillClass = item.average_score >= 80 ? "fill-high" : item.average_score >= 60 ? "fill-medium" : "fill-low";
+            const formattedDate = new Date(item.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+
+            return `
+              <div class="trend-bar-group" title="${item.date}: ${item.average_score}% avg (${item.attempts_count} attempt${item.attempts_count === 1 ? '' : 's'})">
+                <span class="trend-bar-score">${item.average_score}%</span>
+                <div class="trend-bar-track">
+                  <div class="trend-bar-fill ${fillClass}" style="height: ${heightPct}%;"></div>
+                </div>
+                <span class="trend-date-label">${formattedDate}</span>
+              </div>
+            `;
+          })
+          .join("");
+      } else {
+        recallTrendContainer.innerHTML = '<p class="empty-note">Complete recall sessions to visualize your performance trend.</p>';
+      }
+    }
+
+    // 4. Subject-Wise Mastery Breakdown
+    const subjRes = await fetch("/api/analytics/subjects");
+    const subjJson = await subjRes.json();
+    if (subjectsAnalyticsList) {
+      if (subjJson.success && Array.isArray(subjJson.data) && subjJson.data.length > 0) {
+        subjectsAnalyticsList.innerHTML = subjJson.data
+          .map((s) => `
+            <div class="subject-stat-card">
+              <div class="subject-stat-top">
+                <span class="subject-stat-title">${escapeHtml(s.subject)}</span>
+                <span class="level-pill level-${levelToCssClass(s.mastery_level)}">${s.mastery_percentage}% (${s.mastery_level})</span>
+              </div>
+              <div class="progress-bar">
+                <span class="progress-fill" style="width: ${Math.max(5, s.mastery_percentage)}%;"></span>
+              </div>
+              <div class="subject-meta-tags">
+                <span>📚 ${s.topics_count} topic${s.topics_count === 1 ? '' : 's'}</span>
+                <span>🧠 ${s.recall_attempts_count} attempt${s.recall_attempts_count === 1 ? '' : 's'}</span>
+                <span>⚡ ${s.average_recall_score}% avg recall</span>
+              </div>
+            </div>
+          `)
+          .join("");
+      } else {
+        subjectsAnalyticsList.innerHTML = '<p class="empty-note">No subjects recorded.</p>';
+      }
+    }
+
+    // 5. Topic Mastery Table
+    const topicsRes = await fetch("/api/analytics/topics");
+    const topicsJson = await topicsRes.json();
+    if (topicMasteryTbody) {
+      if (topicsJson.success && Array.isArray(topicsJson.data) && topicsJson.data.length > 0) {
+        topicMasteryTbody.innerHTML = topicsJson.data
+          .map((t) => {
+            const latestDisplay = t.latest_score !== null ? `${t.latest_score}%` : "--";
+            const avgDisplay = t.average_score !== null ? `${t.average_score}%` : "--";
+            const revStatus = t.pending_revisions > 0 ? `<span class="urgency-badge urgency-due-today">Pending</span>` : `<span class="urgency-badge urgency-upcoming">Up to date</span>`;
+
+            return `
+              <tr>
+                <td><strong>${escapeHtml(t.title)}</strong></td>
+                <td><span class="subject-badge">${escapeHtml(t.subject)}</span></td>
+                <td>${latestDisplay}</td>
+                <td>${avgDisplay}</td>
+                <td>${t.attempts_count}</td>
+                <td><span class="level-pill level-${levelToCssClass(t.mastery_level)}">${t.mastery_percentage}% (${t.mastery_level})</span></td>
+                <td>${revStatus}</td>
+                <td>
+                  <button class="btn btn-small btn-primary" onclick="jumpToRecallTopic('${t.topic_id}')">Revise</button>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+      } else {
+        topicMasteryTbody.innerHTML = '<tr><td colspan="8" class="empty-note">No topics available.</td></tr>';
+      }
+    }
+
+    // 6. Recent Recall Evaluations History
     const historyRes = await fetch("/api/recall/history");
     const historyJson = await historyRes.json();
-    if (historyJson.success && Array.isArray(historyJson.data) && historyJson.data.length > 0) {
-      if (allHistoryTbody) {
+    if (allHistoryTbody) {
+      if (historyJson.success && Array.isArray(historyJson.data) && historyJson.data.length > 0) {
         allHistoryTbody.innerHTML = historyJson.data
+          .slice(0, 10)
           .map((att) => {
             const dateStr = new Date(att.created_at).toLocaleDateString("en-IN", {
               day: "numeric",
@@ -1363,14 +1488,13 @@ async function loadRecallProgressStats() {
             `;
           })
           .join("");
-      }
-    } else {
-      if (allHistoryTbody) {
+      } else {
         allHistoryTbody.innerHTML = '<tr><td colspan="5" class="empty-note">No recall evaluations recorded yet.</td></tr>';
       }
     }
+
   } catch (err) {
-    console.error("Failed to load progress stats:", err);
+    console.error("Failed to load learning analytics:", err);
   }
 }
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Student Productivity Dashboard & AI Recall</title>
+    <title>StudyPulse — Student Productivity Dashboard & AI Recall</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -35,9 +35,9 @@
             <span class="nav-icon" aria-hidden="true">▤</span>
             Subjects & Notes
           </a>
-          <a class="nav-link" href="#progress" data-view="progress">
-            <span class="nav-icon" aria-hidden="true">◉</span>
-            Recall Progress
+          <a class="nav-link" href="#analytics" data-view="analytics">
+            <span class="nav-icon" aria-hidden="true">📊</span>
+            Learning Analytics
           </a>
           <a class="nav-link" href="#settings" data-view="settings">
             <span class="nav-icon" aria-hidden="true">⚙</span>
@@ -444,77 +444,130 @@
             </section>
           </div>
 
-          <!-- ================= VIEW 4: RECALL PROGRESS & STATS (Phase 3 & 4) ================= -->
-          <div id="viewProgress" class="view-pane" hidden>
+          <!-- ================= VIEW 4: PERSONALIZED LEARNING ANALYTICS (Phase 5) ================= -->
+          <div id="viewAnalytics" class="view-pane" hidden>
             <section class="panel">
               <div class="panel-header">
                 <div>
-                  <span class="view-kicker">Analytics & Spaced Repetition</span>
-                  <h2>Active Recall & Revision Analytics</h2>
-                </div>
-              </div>
-              <div class="stats-overview-grid">
-                <div class="kpi-card">
-                  <p class="kpi-label">Total Recall Sessions</p>
-                  <p class="kpi-value" id="statsTotalAttempts">0</p>
-                  <p class="kpi-meta">All-time evaluations</p>
-                </div>
-                <div class="kpi-card">
-                  <p class="kpi-label">Average Recall Score</p>
-                  <p class="kpi-value" id="statsAvgScore">0%</p>
-                  <p class="kpi-meta">Accuracy rate</p>
-                </div>
-                <div class="kpi-card">
-                  <p class="kpi-label">Revisions Due / Overdue</p>
-                  <p class="kpi-value" id="statsDueRevisionsCount">0</p>
-                  <p class="kpi-meta">Require practice</p>
-                </div>
-                <div class="kpi-card">
-                  <p class="kpi-label">Completed Revisions</p>
-                  <p class="kpi-value" id="statsCompletedRevisionsCount">0</p>
-                  <p class="kpi-meta">Spaced repetition done</p>
+                  <span class="view-kicker">Personalized Insights</span>
+                  <h2>Learning Analytics & Progress Dashboard</h2>
+                  <p class="view-subtitle">Track retention mastery, score trends over time, subject performance, and data-driven learning insights.</p>
                 </div>
               </div>
 
-              <!-- Strongest & Weakest Topics Breakdown -->
-              <div class="topic-strength-grid" style="margin-top: 20px;">
+              <!-- Phase 5: Overall Learning Analytics KPI Grid -->
+              <div class="analytics-kpi-grid">
+                <article class="analytics-kpi-card kpi-overall-score">
+                  <div class="analytics-kpi-top">
+                    <p class="kpi-label">Overall Learning Score</p>
+                    <span class="level-pill level-excellent" id="analyticsOverallLevel">--</span>
+                  </div>
+                  <div class="analytics-score-row">
+                    <p class="analytics-huge-score" id="analyticsOverallScore">0</p>
+                    <span class="analytics-score-max">/ 100</span>
+                  </div>
+                  <p class="kpi-meta">50% Recall + 30% Mastery + 20% Revision</p>
+                </article>
+
+                <article class="analytics-kpi-card">
+                  <p class="kpi-label">Average Recall Score</p>
+                  <p class="analytics-huge-score" id="analyticsAvgRecall">0%</p>
+                  <p class="kpi-meta" id="analyticsTotalAttemptsMeta">Across 0 recall attempts</p>
+                </article>
+
+                <article class="analytics-kpi-card">
+                  <p class="kpi-label">Topics Mastered</p>
+                  <p class="analytics-huge-score" id="analyticsTopicsMastered">0</p>
+                  <p class="kpi-meta" id="analyticsMasteryRatioMeta">0 of 0 topics ≥ 85% mastery</p>
+                </article>
+
+                <article class="analytics-kpi-card">
+                  <p class="kpi-label">Revision Completion Rate</p>
+                  <p class="analytics-huge-score" id="analyticsRevCompletion">0%</p>
+                  <p class="kpi-meta" id="analyticsActiveRevsMeta">0 completed / 0 scheduled</p>
+                </article>
+              </div>
+
+              <!-- Phase 5: Personalized Learning Insights Section -->
+              <div class="insights-section" style="margin-top: 24px;">
+                <div class="section-title-row">
+                  <h3>🧠 Personalized Learning Insights</h3>
+                  <span class="panel-count">Generated from study performance</span>
+                </div>
+                <div class="insights-grid" id="analyticsInsightsContainer">
+                  <p class="empty-note">Loading personalized learning insights...</p>
+                </div>
+              </div>
+
+              <!-- Phase 5: Trend & Subject Performance Two-Column Grid -->
+              <div class="analytics-two-col" style="margin-top: 24px;">
+                <!-- Recall Performance Trend Chart -->
+                <div class="analytics-col-panel">
+                  <div class="section-title-row">
+                    <h3>📈 Recall Performance Trend</h3>
+                    <span class="panel-count">Score over time</span>
+                  </div>
+                  <div class="trend-chart-container" id="recallTrendContainer">
+                    <p class="empty-note">Complete recall sessions to visualize your performance trend.</p>
+                  </div>
+                </div>
+
+                <!-- Subject-Wise Mastery Matrix -->
+                <div class="analytics-col-panel">
+                  <div class="section-title-row">
+                    <h3>📚 Subject-wise Performance</h3>
+                    <span class="panel-count">Mastery breakdown</span>
+                  </div>
+                  <div class="subjects-analytics-list" id="subjectsAnalyticsList">
+                    <p class="empty-note">No subjects available.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Strongest & Topics Needing Attention Breakdown -->
+              <div class="topic-strength-grid" style="margin-top: 24px;">
                 <div class="strength-card strength-high">
-                  <h4>🏆 Strongest Topics (Mastery)</h4>
-                  <ul class="strength-list" id="strongestTopicsList">
+                  <h4>🏆 Strongest Topics (Mastery ≥ 70%)</h4>
+                  <ul class="strength-list" id="analyticsStrongestList">
                     <li class="empty-note">Complete recalls to see mastery topics.</li>
                   </ul>
                 </div>
                 <div class="strength-card strength-low">
-                  <h4>🎯 Weakest Topics (Needs Review)</h4>
-                  <ul class="strength-list" id="weakestTopicsList">
-                    <li class="empty-note">Complete recalls to see topics needing focus.</li>
+                  <h4>🎯 Topics Needing Attention (&lt; 70%)</h4>
+                  <ul class="strength-list" id="analyticsWeakestList">
+                    <li class="empty-note">Complete recalls to see topics needing review.</li>
                   </ul>
                 </div>
               </div>
 
-              <!-- Upcoming & Scheduled Revisions Table -->
-              <div class="all-history-section" style="margin-top: 24px;">
-                <h3>Upcoming & Due Revision Schedules</h3>
+              <!-- Topic Mastery Comprehensive Table -->
+              <div class="all-history-section" style="margin-top: 28px;">
+                <div class="section-title-row">
+                  <h3>📑 Comprehensive Topic Mastery Matrix</h3>
+                  <span class="panel-count">All curriculum topics</span>
+                </div>
                 <div class="history-table-container">
-                  <table class="history-table" id="upcomingRevisionsTable">
+                  <table class="history-table" id="topicMasteryTable">
                     <thead>
                       <tr>
-                        <th>Topic</th>
+                        <th>Topic Name</th>
                         <th>Subject</th>
-                        <th>Last Score</th>
-                        <th>Revision Date</th>
-                        <th>Status</th>
+                        <th>Latest Score</th>
+                        <th>Avg Score</th>
+                        <th>Attempts</th>
+                        <th>Mastery Level</th>
+                        <th>Revision Status</th>
                         <th>Action</th>
                       </tr>
                     </thead>
-                    <tbody id="upcomingRevisionsTbody">
-                      <tr><td colspan="6" class="empty-note">No active revision schedules.</td></tr>
+                    <tbody id="topicMasteryTbody">
+                      <tr><td colspan="8" class="empty-note">Loading topic mastery data...</td></tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <!-- Recent Evaluations History -->
+              <!-- Recent Recall Evaluations History -->
               <div class="all-history-section" style="margin-top: 24px;">
                 <h3>Recent Recall Evaluations</h3>
                 <div class="history-table-container">
@@ -529,7 +582,7 @@
                       </tr>
                     </thead>
                     <tbody id="allHistoryTbody">
-                      <tr><td colspan="5" class="empty-note">No evaluations recorded yet.</td></tr>
+                      <tr><td colspan="5" class="empty-note">No recall evaluations recorded yet.</td></tr>
                     </tbody>
                   </table>
                 </div>
@@ -550,6 +603,15 @@
                     <p class="settings-desc">StudyPulse automatically utilizes the built-in Concept-Matching Engine or connects to Google Gemini / OpenAI via environment variables.</p>
                   </div>
                   <span class="status-tag is-done">Active</span>
+                </div>
+                <div class="settings-item">
+                  <div>
+                    <h4>Overall Learning Score Formula</h4>
+                    <p class="settings-desc">
+                      <code>Overall Learning Score = 0.50 × Avg Recall + 0.30 × Avg Mastery + 0.20 × Revision Completion Rate</code>
+                    </p>
+                  </div>
+                  <span class="status-tag is-done">Enabled</span>
                 </div>
                 <div class="settings-item">
                   <div>
